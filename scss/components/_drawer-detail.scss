@@ -1,0 +1,116 @@
+// =============================================================================
+// components/_drawer-detail.scss
+//
+// The overlay panel that hosts the ticket detail on the ticket list.
+//
+// Only the panel lives here. What goes inside it is the ticket detail
+// component (modules/_ticket-detail.scss), which the canonical page renders
+// too — this file must never grow rules about threads, rails or composers.
+//
+// Wider and quieter than the new-ticket drawer on purpose: that one is a form
+// to fill in, this one is a screen to work in, so it gets the app canvas as its
+// background and lets the cards inside carry the white.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+@use 'drawer-base' as drawer;
+
+.mhd-detail-drawer-mount {
+  @include drawer.mhd-drawer-mount;
+}
+
+.mhd-detail-drawer {
+  @include drawer.mhd-drawer-panel(
+    var(--mhd-detail-drawer-width, 880px),
+    var(--mhd-color-canvas, #f5f6fb)
+  );
+}
+
+.mhd-detail-drawer-mount.is-open {
+  .mhd-drawer__backdrop {
+    opacity: 1;
+  }
+
+  .mhd-detail-drawer {
+    transform: translateX(0);
+  }
+}
+
+// Generic backdrop and close button: named for the base rather than for this
+// component, because the detail is rendered by a fragment that knows nothing
+// about which panel it landed in.
+.mhd-drawer__backdrop {
+  @include drawer.mhd-drawer-backdrop;
+}
+
+.mhd-drawer__close {
+  @include drawer.mhd-drawer-close;
+
+  &-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// The injected detail fills the panel: its own body is the scroll region, so
+// the header and the composer stay put while the conversation moves.
+.mhd-detail-drawer__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  // display:flex would otherwise defeat the attribute the JS toggles while the
+  // fragment is in flight.
+  &[hidden] {
+    display: none;
+  }
+
+  > .mhd-detail {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+// Loading and failure states, shown before the fragment arrives.
+.mhd-detail-drawer__status {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mhd-space-sm, 8px);
+  padding: var(--mhd-space-lg, 24px);
+  color: var(--mhd-color-text-muted, #6b7280);
+  font-size: var(--mhd-font-size-sm, 0.8125rem);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.mhd-detail-drawer__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--mhd-color-border, #e5e7eb);
+  border-top-color: var(--mhd-color-primary, #2563eb);
+  border-radius: var(--mhd-radius-full, 9999px);
+  animation: mhd-drawer-spin 0.8s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes mhd-drawer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Below the tablet breakpoint the panel is full-bleed; the detail inside drops
+// to a single column on its own (see modules/_ticket-detail.scss).
+@include bp.mhd-respond-to('mobile') {
+  .mhd-detail-drawer {
+    border-left: 0;
+  }
+}

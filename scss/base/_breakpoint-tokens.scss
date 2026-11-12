@@ -1,0 +1,40 @@
+// =============================================================================
+// base/_breakpoint-tokens.scss
+//
+// The breakpoint scale, published as CSS custom properties so JavaScript can
+// read the same numbers the stylesheet reflows on.
+//
+// WHY THIS FILE EXISTS: two AMD modules (app_shell, detail_tabs) have to know
+// where the layout changes, because a media query cannot open a drawer or move
+// focus. Until now each one carried its own `'(max-width: 768px)'` string, and
+// nothing tied those strings to the SCSS — a breakpoint edit would have moved
+// the CSS and left the behaviour behind, with no error anywhere to show it.
+//
+// WHY :root, when base/_app-tokens.scss is emphatic that tokens belong on
+// `.moodesk-app`: that rule protects legacy screens from the shell's *visual*
+// tokens, and these are not visual. A custom property paints nothing; it is a
+// value waiting to be read. It also has to be readable outside the shell, since
+// the ticket detail — where detail_tabs mounts — renders on the canonical page
+// too, which has no `.moodesk-app` wrapper. modules/_sla.scss already publishes
+// its palette on :root for the same reason, so this is the existing pattern
+// rather than a new exception. Every name is prefixed `--mhd-`, so nothing here
+// can collide with Moodle or its theme.
+//
+// SOURCE OF TRUTH is abstracts/_breakpoints.scss. Add a value here only when
+// something outside the stylesheet needs to read it.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+
+:root {
+  // Emitted with the same edge semantics the mixin uses, so a reader in JS and
+  // a media query in CSS agree on which side of the boundary a pixel is on:
+  // `-max` is the last pixel INSIDE the step, plain names are the first pixel
+  // of the step they name. See abstracts/_breakpoints.scss for why tablet is
+  // the one inclusive edge.
+  --mhd-bp-mobile:     #{bp.$mhd-bp-mobile};
+  --mhd-bp-tablet-max: #{bp.$mhd-bp-tablet-max};
+  --mhd-bp-desktop:    #{bp.$mhd-bp-desktop};
+  --mhd-bp-wide:       #{bp.$mhd-bp-wide};
+  --mhd-bp-ultrawide:  #{bp.$mhd-bp-ultrawide};
+}

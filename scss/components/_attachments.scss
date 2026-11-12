@@ -1,0 +1,91 @@
+// =============================================================================
+// components/_attachments.scss
+// File attachment list component.
+//
+// Used in ticket thread entries to display attached files.
+// Applies to .mhd-attachment-list / .mhd-attachment-item.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+// ── Container ────────────────────────────────────────────────────────────────
+
+.mhd-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// ── Individual attachment item ────────────────────────────────────────────────
+
+.mhd-attachment-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.375rem;
+  background-color: var(--bs-light, #f8f9fa);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--bs-body-color, #212529);
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+
+  &:hover,
+  &:focus {
+    background-color: var(--bs-secondary-bg, #e9ecef);
+    border-color: var(--bs-secondary, #6c757d);
+    color: var(--bs-body-color, #212529);
+    text-decoration: none;
+    outline-offset: 2px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+  }
+}
+
+// ── File icon (CSS-only, no external dependency) ──────────────────────────────
+
+.mhd-attachment-icon {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  background-color: var(--bs-secondary, #6c757d);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 0h5.293A1 1 0 0 1 10 .293L13.707 4a1 1 0 0 1 .293.707V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm5.5 1.5v2a1 1 0 0 0 1 1h2L9.5 1.5z'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 0h5.293A1 1 0 0 1 10 .293L13.707 4a1 1 0 0 1 .293.707V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm5.5 1.5v2a1 1 0 0 0 1 1h2L9.5 1.5z'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+// ── Filename ──────────────────────────────────────────────────────────────────
+
+.mhd-attachment-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Size label ────────────────────────────────────────────────────────────────
+
+.mhd-attachment-size {
+  color: var(--bs-secondary-color, #6c757d);
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+// ── Separator between message and attachments ─────────────────────────────────
+
+.mhd-attachment-divider {
+  border: 0;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  margin: 0.75rem 0 0.625rem;
+}

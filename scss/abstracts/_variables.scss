@@ -1,0 +1,160 @@
+// =============================================================================
+// abstracts/_variables.scss
+// Design tokens: spacing, sizing, border radii, transitions.
+// =============================================================================
+
+@use 'colors' as c;
+
+// Spacing scale.
+$mhd-space-xs:  4px;
+$mhd-space-sm:  8px;
+$mhd-space-md:  16px;
+$mhd-space-lg:  24px;
+$mhd-space-xl:  32px;
+
+// Border radii.
+$mhd-radius-sm:  4px;
+$mhd-radius-md:  6px;
+$mhd-radius-lg:  10px;   // cards, panels, shell surfaces (F1)
+$mhd-radius-pill: 20px;
+$mhd-radius-full: 9999px; // avatars, circular controls (F1)
+
+// Transitions.
+$mhd-transition-fast: 0.15s ease;
+
+// Typography.
+$mhd-font-size-xs: 0.75rem;    // 12px
+$mhd-font-size-sm: 0.8125rem;  // ~13px
+$mhd-font-size-md: 0.9375rem;  // 15px — shell body default (F1)
+$mhd-font-size-lg: 1.125rem;   // 18px — section titles (F1)
+$mhd-font-size-xl: 1.375rem;   // 22px — page heading (F1)
+
+// Font weights (F1).
+$mhd-font-weight-regular:  400;
+$mhd-font-weight-medium:   500;
+$mhd-font-weight-semibold: 600;
+$mhd-font-weight-bold:     700;
+
+// Line heights (F1).
+$mhd-line-height:       1.5;
+$mhd-line-height-tight: 1.25;
+
+// Sidebar control card.
+$mhd-control-card-header-bg: #f8f9fa;
+
+// Row dimensions.
+$mhd-row-min-height:      56px;
+$mhd-filter-input-height: 36px;
+
+// ── Data table ───────────────────────────────────────────────────────────────
+// The product's one table geometry, read by components/_datatable.scss. Every
+// table in mooDesk is the same object at the same size, whatever it lists.
+//
+// 52px is M3's data-table row: enough for a 32px Pill or a 36px avatar with
+// room to breathe, and short enough that a roster of forty agents is still one
+// screen of scrolling rather than three. The header is shorter on purpose — it
+// carries column names, not data, and should not weigh as much as a row.
+//
+// The vertical padding is a floor, not the height: `height` on a cell behaves
+// as a minimum, so a wrapped department name grows its own row and leaves the
+// others alone.
+$mhd-datatable-row-height:  52px;
+$mhd-datatable-head-height: 44px;
+$mhd-datatable-cell-pad-x:  16px;
+$mhd-datatable-cell-pad-y:  10px;
+
+// ── Entity cell ──────────────────────────────────────────────────────────────
+// Avatar (or entity icon) beside a name and one line of secondary information.
+// 36px matches the shell topbar's avatar, so the same face is the same size
+// wherever the product draws it.
+//
+// The indent is what the avatar and its gap occupy together. Below the desktop
+// step the row becomes a card and its metadata lines up under the NAME rather
+// than under the avatar — that alignment is this number, and it is here so the
+// card and the cell cannot drift apart.
+$mhd-entity-avatar: 36px;
+$mhd-entity-gap:    12px;
+$mhd-entity-indent: $mhd-entity-avatar + $mhd-entity-gap;
+
+// Responsive page padding (used by .mhd-ticket-list and future full-width modules).
+$mhd-page-padding-mobile:  16px;
+$mhd-page-padding-tablet:  20px;
+$mhd-page-padding-desktop: 24px;
+$mhd-page-padding-wide:    32px;
+
+// ── Product forms ────────────────────────────────────────────────────────────
+// The two numbers a mooDesk form page is laid out by. Both are widths of
+// CONTENT, not of screens: the form surface decides its own column count from
+// the room it has (components/_moodleform.scss), so neither of these is a
+// breakpoint and neither belongs to the breakpoint scale.
+//
+// The narrowest a field column may be before the grid drops to one. It is
+// measured from the longest label the product ships — "Resolution time — Normal
+// (hours)", about 240px at the shell's 15px body size — plus room for the field
+// to breathe, so a label never needs a second line and never gets the chance to
+// break mid-word inside a column too narrow for it.
+//
+// What it produces, against the shell's real content widths: two columns on a
+// laptop and on a tablet held sideways, one column on a tablet held upright and
+// on a phone. The form page caps at 880px, so the widest a column ever gets is
+// about 400px — a screen twice that size gets the same two columns, not two
+// columns of 700px.
+$mhd-form-field-min: 340px;
+
+// A control whose value is a handful of characters — a count of hours, a sort
+// order — sized to what it holds rather than stretched to its column. The
+// stacked field gives every control the full width by default, which is right
+// for a name or a URL and absurd for a number.
+$mhd-form-control-narrow: 120px;
+
+// Elevation / shadows.
+$mhd-shadow-card:       0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+$mhd-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.10), 0 2px 4px rgba(0, 0, 0, 0.06);
+$mhd-shadow-drawer:     -8px 0 24px rgba(15, 23, 42, 0.12);
+// A card that stays put while others scroll beneath it.
+$mhd-shadow-pinned:     0 1px 3px c.$mhd-color-shadow-soft;
+
+// Overlay drawer (new ticket).
+$mhd-drawer-width:      520px;
+$mhd-drawer-backdrop:   rgba(15, 23, 42, 0.45);
+
+// Ticket detail: a working surface, not a form — wider panel, and a management
+// rail narrow enough to leave the conversation the room it needs.
+//
+// Two rail widths, because the two mounts measure it differently. On the page
+// the rail is a bare column and the body's padding surrounds it. In the drawer
+// the rail is its own scrollport and carries that padding itself, so the track
+// has to be wider by exactly that much to leave the cards the same room:
+// 308 - (20 + 20) = 268, so the drawer's width is derived rather than kept in
+// step by hand. 268 is the card width of the reference design.
+$mhd-detail-drawer-width:     880px;
+$mhd-detail-rail-width:       268px;
+$mhd-detail-drawer-pad:        20px;
+$mhd-detail-drawer-rail-width: $mhd-detail-rail-width + 2 * $mhd-detail-drawer-pad;
+
+// Application-shell dimensions (phase F1; consumed by the shell in F2).
+$mhd-sidebar-width:           256px;
+$mhd-sidebar-width-collapsed: 64px;
+$mhd-topbar-height:           60px;
+
+// The composer's message box, shared by the reply composer and the New ticket
+// form. It opens at the form element's `rows` and grows with what is written
+// until it hits this ceiling, then scrolls: ten lines of text plus the box's own
+// 12px of padding above and below.
+//
+// Here rather than in modules/_ticket-detail.scss because two screens now size
+// the same control, and the ceiling is what stops an auto-growing box from
+// pushing everything below it off the panel.
+// The composer's send control: a square icon button, sized at the smallest
+// target a thumb should be asked to hit. It is a shared number rather than a
+// local one because it sets two things that have to agree — the button, and the
+// height of the message box beside it. A one-line composer is one row, and a
+// box that is not exactly as tall as the button next to it shows the seam.
+$mhd-composer-send-size: 44px;
+
+$mhd-composer-input-line-height: 1.5;
+$mhd-composer-input-rows-max:    10;
+$mhd-composer-input-max: calc(
+  #{$mhd-composer-input-rows-max} * var(--mhd-font-size-md, 0.9375rem) *
+  #{$mhd-composer-input-line-height} + 24px
+);

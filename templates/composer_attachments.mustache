@@ -1,0 +1,85 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/composer_attachments
+
+    The attachment control for a form that composes a message: one button that
+    opens Moodle's file picker, and the files the draft currently holds.
+
+    Used by the New ticket form on both of its mounts — the drawer over the list
+    and the standalone submit.php page — so the two cannot drift apart. The reply
+    composer draws the same idea differently (a disclosure in its action bar,
+    because a reply sits under a conversation and every line it claims at rest is
+    a line of thread the agent cannot see); what the two share is everything
+    below the surface: this template's file list, amd/src/composer_attachments.js,
+    the draft endpoints in ajax.php and draft_attachment_service.
+
+    The button is the upload, not a disclosure: clicking it opens the picker.
+    The list under it is drawn from what the server reports the draft holds,
+    never from what was just clicked, so a refused upload or a failed delete
+    leaves the list telling the truth.
+
+    It renders inside the <form> — moodleform places it with an 'html' element,
+    which emits the markup verbatim with no .fitem wrapper of its own, so it can
+    sit directly under the message box and share its left edge. Nothing here
+    submits: what the submit needs is the draft item id, which the form carries
+    in a hidden field.
+
+    Context variables required for this template:
+    * rootid   - Unique DOM id for the region. Two composers can share a screen
+                 (the ticket list hosts this drawer and the ticket detail one),
+                 so each is addressable on its own.
+    * panelid  - Unique DOM id for the file list region.
+    * label    - Visible button text, e.g. "Attach files". Never icon-only: the
+                 paperclip is decoration, the word is the meaning.
+    * maxfiles - How many files the form accepts, for the limit note.
+    * config   - JSON the module reads to wire this control: the draft item id,
+                 the endpoint, the sesskey and the file picker options. It rides
+                 on the element rather than on a js_call_amd argument because
+                 the picker options alone run past the 1024 characters Moodle
+                 accepts there.
+
+    Example context (json):
+    {
+        "rootid": "mhd-attach-65f1c2a0b3d4e",
+        "panelid": "mhd-attach-panel-65f1c2a0b3d4e",
+        "label": "Attach files",
+        "maxfiles": 5,
+        "config": "{\"draftitemid\":123}"
+    }
+}}
+<div class="mhd-attach" id="{{rootid}}" data-region="mhd-composer-attachments"
+     data-config="{{config}}">
+  {{! The Button component, outlined at xsmall: attaching is a control that
+      belongs to the field above it, never the form's primary action. }}
+  <button type="button"
+          class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-attach__trigger"
+          data-action="mhd-attach-file"
+          aria-controls="{{panelid}}">
+    <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+      <use href="#mhd-icon-paperclip"></use>
+    </svg>
+    <span class="mhd-attach__label">{{label}}</span>
+    <span class="mhd-attach__count" data-region="mhd-attach-count" hidden></span>
+  </button>
+  {{! Renders empty and stays empty until the draft holds something: a ticket
+      with nothing attached costs the form no height. }}
+  <div class="mhd-attach__panel" id="{{panelid}}" data-region="mhd-attach-panel">
+    <div data-region="mhd-attach-list"></div>
+  </div>
+  <p class="mhd-attach__note">{{#str}} attachment_panel_note_inline, local_moodesk, {{maxfiles}} {{/str}}</p>
+</div>

@@ -1,0 +1,644 @@
+// =============================================================================
+// modules/_dashboard.scss
+//
+// The operational dashboard page: KPI row, trend, breakdowns, SLA gauge,
+// workload table, aging bands, categories and activity.
+//
+// Every figure renders without JavaScript — the bars here are pure CSS and the
+// numbers sit in the markup. F4 mounts Chart.js over the same blocks, so this
+// is the no-JS rendering rather than temporary scaffolding.
+//
+// Colour comes from tokens: status and priority hues from abstracts/colors,
+// everything else from the app-shell custom properties in base/_app-tokens.
+// No raw hex belongs in this file.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+@use '../abstracts/mixins'      as m;
+@use '../components/datatable'  as dt;
+
+// =============================================================================
+// Page wrapper and header
+// =============================================================================
+
+.mhd-dashboard {
+  width: 100%;
+  padding-top: v.$mhd-space-md;
+  padding-bottom: v.$mhd-space-xl;
+  padding-inline: v.$mhd-page-padding-desktop;
+
+  @include bp.mhd-respond-to('wide') {
+    padding-inline: v.$mhd-page-padding-wide;
+  }
+
+  @include bp.mhd-respond-to('below-desktop') {
+    padding-inline: v.$mhd-page-padding-tablet;
+  }
+
+  @include bp.mhd-respond-to('mobile') {
+    padding-inline: v.$mhd-page-padding-mobile;
+  }
+}
+
+// The page header used to be declared here as `.mhd-dash-header` /
+// `.mhd-dash-title` / `.mhd-dash-actions` — a near-copy of the same three rules
+// that also existed in modules/_reports.scss and layout/_page-header.scss, at
+// three different title sizes. It is layout/_page-header.scss now, for every
+// screen.
+
+// =============================================================================
+// Filter bar
+//
+// Structure comes from layout/_filters.scss; this adds the stacked label that
+// the dashboard's selects carry and the list's do not — with four unlabelled
+// dropdowns side by side, nothing tells you which is which.
+// =============================================================================
+
+.mhd-dash-filters {
+  align-items: flex-end;
+
+  .mhd-filter-select {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.mhd-filter-label {
+  margin: 0;
+  font-size: var(--mhd-font-size-xs);
+  font-weight: var(--mhd-font-weight-medium);
+  color: var(--mhd-color-text-muted);
+}
+
+// =============================================================================
+// Page grid
+//
+// One twelve-column grid owns the whole page: the KPI row, every panel, and the
+// space between them. Twelve divides by two, three, four and six, so each
+// arrangement below lands on exact rows with no leftover track — which is why
+// the count is twelve rather than the number of panels.
+//
+// Each panel says how many columns it wants at each width, instead of being
+// wrapped in a row that decides for it. A panel is sized by what it has to
+// draw: a time series needs width, a doughnut does not, and a six-column table
+// needs more than either.
+//
+// Past 1800px the page stops widening its rows and adds columns instead. On an
+// ultrawide monitor a full-width bar chart runs the length of the desk, which
+// leaves the label at one end and its figure at the other; three panels abreast
+// keep both in one glance.
+// =============================================================================
+
+.mhd-dash-sections {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: v.$mhd-space-md;
+
+  // Full width is the starting point, and the only arrangement on a phone.
+  // Everything below is an exception to this.
+  > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+}
+
+@include bp.mhd-respond-to('desktop') {
+  .mhd-dash-cell {
+    // A time series is the one panel that reads better the wider it gets: more
+    // days fit before the axis starts skipping labels. A ring does not — it is
+    // drawn at the smaller of the panel's two dimensions and the rest is empty
+    // panel. So the trend takes what the doughnut has no use for.
+    &--trend    { grid-column: span 9; }
+    &--status   { grid-column: span 3; }
+    &--priority { grid-column: span 6; }
+    &--sla      { grid-column: span 6; }
+  }
+}
+
+// The workload table carries six columns of its own; below 1200 it needs the
+// full width, or the last of them falls off the panel's edge.
+@include bp.mhd-respond-to('wide') {
+  .mhd-dash-cell {
+    &--workload { grid-column: span 8; }
+    &--aging    { grid-column: span 4; }
+  }
+}
+
+@include bp.mhd-respond-to('ultrawide') {
+  .mhd-dash-cell {
+    &--trend      { grid-column: span 7; }
+    &--status     { grid-column: span 2; }
+    &--priority   { grid-column: span 3; }
+    // The gauge needs the least width of anything on the page; the department
+    // stack, which is seven labelled bars, takes what it gives up.
+    &--sla        { grid-column: span 3; }
+    &--dept       { grid-column: span 9; }
+    &--workload   { grid-column: span 8; }
+    &--aging      { grid-column: span 4; }
+    &--categories { grid-column: span 6; }
+    &--activity   { grid-column: span 6; }
+  }
+}
+
+// KPI cards: components/_kpi.scss (promoted in KB-07 so the knowledge base
+// analytics page shares them). The semantic accents live there too.
+
+// =============================================================================
+// Panels
+// =============================================================================
+
+.mhd-panel {
+  display: flex;
+  flex-direction: column;
+  padding: v.$mhd-space-md;
+  background: var(--mhd-color-surface);
+  border: 1px solid var(--mhd-color-border);
+  border-radius: var(--mhd-radius-lg);
+  min-width: 0;
+}
+
+.mhd-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: v.$mhd-space-sm;
+  margin-bottom: v.$mhd-space-md;
+  flex-wrap: wrap;
+}
+
+.mhd-panel-title {
+  margin: 0;
+  font-size: var(--mhd-font-size-md);
+  font-weight: var(--mhd-font-weight-semibold);
+  color: var(--mhd-color-text);
+}
+
+// Says which window the panel covers, so a reader never has to guess whether a
+// figure responded to the range they picked.
+.mhd-panel-meta {
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+}
+
+.mhd-panel-total {
+  margin: 0 0 v.$mhd-space-sm;
+  font-size: var(--mhd-font-size-sm);
+  color: var(--mhd-color-text-muted);
+
+  strong {
+    font-size: var(--mhd-font-size-lg);
+    color: var(--mhd-color-text);
+  }
+}
+
+.mhd-panel-empty {
+  margin: 0;
+  padding: v.$mhd-space-lg 0;
+  text-align: center;
+  font-size: var(--mhd-font-size-sm);
+  font-style: italic;
+  color: var(--mhd-color-text-muted);
+}
+
+// =============================================================================
+// Chart canvases and their fallback markup
+//
+// Where dashboard_charts.js mounts a canvas, the CSS rendering it replaces is
+// NOT removed — it is taken out of the visual flow but left in the
+// accessibility tree, so a screen reader still reads the figures as text while
+// the canvas is marked decorative. clip-path rather than `display: none`,
+// because the latter takes the content out of the accessibility tree too.
+//
+// Without JavaScript neither class is ever applied and the CSS rendering is
+// simply the chart.
+// =============================================================================
+
+.mhd-chart-canvas {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
+.mhd-chart-fallback {
+  @include m.mhd-sr-only;
+}
+
+// ---- A chart that keeps its markup as the legend ----------------------------
+//
+// The priority pie shows shares but not counts, and its slices need naming, so
+// the list stays on screen beside it rather than being hidden. Side by side
+// where there is room, stacked where there is not — no media query needed,
+// because the wrap decides on the space the panel actually has.
+.mhd-chart-with-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: v.$mhd-space-md;
+  // The panel stretches to the height of its row, and without this the chart
+  // and its legend sit at the top of it with the spare height below them.
+  // Taking that height is what lets align-items centre them in the panel.
+  flex: 1;
+}
+
+.mhd-chart-canvas--pie {
+  flex: 0 1 280px;
+  height: 280px;
+  // The base canvas fills its panel, which as a flex item means a basis of the
+  // whole row — and the legend could never sit beside it.
+  width: auto;
+  // A flex item will not shrink below its contents, and the canvas Chart.js
+  // draws into counts as contents: without this it holds the width it was first
+  // measured at and pushes the legend onto its own line for good.
+  min-width: 0;
+
+  // On a phone the two would still technically fit side by side, at the cost of
+  // a cramped pie and a legend with no room to breathe. Taking the whole line
+  // sends the legend below it, which is the better reading at that width.
+  @include bp.mhd-respond-to('mobile') {
+    flex-basis: 100%;
+  }
+}
+
+.mhd-bd-list--legend {
+  // Without min-width the rows' own minimum keeps the list from ever sharing a
+  // line with the pie, whatever its basis says. The basis itself is small on
+  // purpose: the pie is the larger of the two and gets the room first, and the
+  // legend grows into whatever is left.
+  flex: 1 1 160px;
+  min-width: 0;
+
+  .mhd-bd-row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    // The phone reflow below belongs to the bar rendering; as a legend the row
+    // is four short cells and stays on one line at every width.
+    grid-template-areas: none;
+  }
+
+  // Dropping the areas is not enough on its own: the cells are still assigned
+  // to them by name, and a name with no area left to match places the cell by
+  // auto-flow instead — which stacks all four on top of each other.
+  .mhd-bd-label,
+  .mhd-bd-bar,
+  .mhd-bd-count,
+  .mhd-bd-pct {
+    grid-area: auto;
+  }
+
+  // The bar becomes the swatch that ties each line to its slice. It leads the
+  // row, which the markup cannot express — the label comes first there, and
+  // that is the right order when the bar is a bar.
+  .mhd-bd-bar {
+    order: -1;
+    width: 10px;
+    height: 10px;
+    // The bars carry a floor of 90px so they stay readable as bars. A swatch is
+    // not a bar, and min-width outranks width, so the floor has to be lifted
+    // here or the dot comes out nine times too wide.
+    min-width: 0;
+    border-radius: var(--mhd-radius-full);
+    background: none;
+  }
+
+  // The fill carries the hue, and an inline width holding this row's share of
+  // the whole — which is the bar's entire job and exactly what a swatch must
+  // not do. Overriding an inline style takes !important; the alternative is a
+  // second colour class in the markup for a purely visual state.
+  .mhd-bd-bar-fill {
+    width: 100% !important;
+    border-radius: inherit;
+  }
+}
+
+// =============================================================================
+// Breakdown lists (status, priority, aging, categories)
+// =============================================================================
+
+.mhd-bd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: v.$mhd-space-sm;
+}
+
+.mhd-bd-row {
+  display: grid;
+  // The label column answers to two limits at once. A pure `fr` share means a
+  // 100px label sits in a 600px column on a wide monitor, with its bar starting
+  // somewhere off to the right; a pure pixel cap means that in a narrow panel
+  // the label eats the width the bar needed. So: never past 220px, never past
+  // 30% of the panel, never under the 110px the longest band ("Under 24 hours")
+  // needs before the ellipsis takes its last word.
+  grid-template-columns: minmax(110px, min(30%, 220px)) 1fr auto auto;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+  font-size: var(--mhd-font-size-sm);
+
+  // On a phone there is no width to share four ways. The label keeps its line
+  // with the figures, and the bar takes the full width underneath — which also
+  // makes the bar longer, and so easier to compare, than it was in the column.
+  @include bp.mhd-respond-to('mobile') {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      'label count pct'
+      'bar   bar   bar';
+    row-gap: v.$mhd-space-xs;
+  }
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-bd-label { grid-area: label; white-space: normal; }
+  .mhd-bd-bar   { grid-area: bar; }
+  .mhd-bd-count { grid-area: count; }
+  .mhd-bd-pct   { grid-area: pct; }
+}
+
+.mhd-bd-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mhd-color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mhd-bd-bar {
+  display: block;
+  height: 8px;
+  border-radius: var(--mhd-radius-pill);
+  background: var(--mhd-color-surface-muted);
+  overflow: hidden;
+  min-width: 90px;
+}
+
+.mhd-bd-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--mhd-radius-pill);
+  background: var(--mhd-color-primary);
+}
+
+.mhd-bd-count {
+  font-weight: var(--mhd-font-weight-semibold);
+  color: var(--mhd-color-text);
+  text-align: right;
+  min-width: 2.5ch;
+}
+
+.mhd-bd-pct {
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+  text-align: right;
+  min-width: 3.5ch;
+}
+
+// ---- Status and priority hues ----------------------------------------------
+
+%mhd-dot-base {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--mhd-radius-full);
+  flex: 0 0 auto;
+}
+
+.mhd-status-dot-0 { @extend %mhd-dot-base; background: c.$mhd-status-new;        }
+.mhd-status-dot-1 { @extend %mhd-dot-base; background: c.$mhd-status-open;       }
+.mhd-status-dot-2 { @extend %mhd-dot-base; background: c.$mhd-status-pending;    }
+.mhd-status-dot-3 { @extend %mhd-dot-base; background: c.$mhd-status-on-hold;    }
+.mhd-status-dot-4 { @extend %mhd-dot-base; background: c.$mhd-status-resolved;   }
+.mhd-status-dot-5 { @extend %mhd-dot-base; background: c.$mhd-status-closed;     }
+.mhd-status-dot-6 { @extend %mhd-dot-base; background: c.$mhd-status-inprogress; }
+
+.mhd-priority-bar-0 { background: c.$mhd-priority-low;    }
+.mhd-priority-bar-1 { background: c.$mhd-priority-normal; }
+.mhd-priority-bar-2 { background: c.$mhd-priority-high;   }
+.mhd-priority-bar-3 { background: c.$mhd-priority-urgent; }
+
+// Aging bands darken with age: the older a ticket is, the more it should pull
+// the eye, because age is the problem the panel exists to surface. Through the
+// tokens rather than the source colours, because the pie reads the same hues at
+// runtime and one definition cannot drift from the other.
+.mhd-aging-bar-0 { background: var(--mhd-aging-0); }
+.mhd-aging-bar-1 { background: var(--mhd-aging-1); }
+.mhd-aging-bar-2 { background: var(--mhd-aging-2); }
+.mhd-aging-bar-3 { background: var(--mhd-aging-3); }
+.mhd-aging-bar-4 { background: var(--mhd-aging-4); }
+
+// =============================================================================
+// Trend — twin CSS bars, one column per day
+// =============================================================================
+
+.mhd-trend-legend,
+.mhd-dept-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-md;
+  margin-bottom: v.$mhd-space-sm;
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+}
+
+.mhd-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mhd-legend-dot {
+  @extend %mhd-dot-base;
+
+  &--created  { background: var(--mhd-color-primary); }
+  &--resolved { background: c.$mhd-status-resolved; }
+}
+
+.mhd-trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 140px;
+  padding-top: v.$mhd-space-sm;
+  overflow-x: auto;
+}
+
+.mhd-trend-col {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  flex: 1 1 0;
+  min-width: 6px;
+  height: 100%;
+}
+
+.mhd-trend-bar {
+  display: block;
+  width: 45%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+
+  &--created  { background: var(--mhd-color-primary); }
+  &--resolved { background: c.$mhd-status-resolved; }
+}
+
+.mhd-trend-summary {
+  margin: v.$mhd-space-sm 0 0;
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+
+  // Set as text, so it takes the readable warning hue rather than the fill one.
+  &--warn {
+    color: var(--mhd-color-warning-text);
+    font-weight: var(--mhd-font-weight-medium);
+  }
+}
+
+// =============================================================================
+// Department stacks
+// =============================================================================
+
+.mhd-dept-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: v.$mhd-space-sm;
+}
+
+.mhd-dept-row {
+  display: grid;
+  // Bounded both ways, for the reason given on .mhd-bd-row.
+  grid-template-columns: minmax(110px, min(30%, 240px)) 1fr auto;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+  font-size: var(--mhd-font-size-sm);
+
+  // Same reflow as the breakdown rows: a stacked bar squeezed into a third of
+  // a phone screen cannot show five segments apart.
+  @include bp.mhd-respond-to('mobile') {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'label total'
+      'bar   bar';
+    row-gap: v.$mhd-space-xs;
+  }
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-dept-label { grid-area: label; }
+  .mhd-dept-bar   { grid-area: bar; }
+  .mhd-dept-total { grid-area: total; }
+}
+
+.mhd-dept-label {
+  color: var(--mhd-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The bar's own width compares departments against the busiest one; the
+// segments inside it are shares of that department's own total, so a small
+// department still reads as a complete stack of its own statuses.
+.mhd-dept-bar {
+  display: flex;
+  height: 14px;
+  border-radius: var(--mhd-radius-sm);
+  overflow: hidden;
+  background: var(--mhd-color-surface-muted);
+  min-width: 2px;
+}
+
+.mhd-dept-seg {
+  display: block;
+  height: 100%;
+}
+
+.mhd-dept-total {
+  font-weight: var(--mhd-font-weight-semibold);
+  color: var(--mhd-color-text);
+  text-align: right;
+  min-width: 2.5ch;
+}
+
+.mhd-seg-0 { background: c.$mhd-status-new;        }
+.mhd-seg-1 { background: c.$mhd-status-open;       }
+.mhd-seg-2 { background: c.$mhd-status-pending;    }
+.mhd-seg-3 { background: c.$mhd-status-on-hold;    }
+.mhd-seg-6 { background: c.$mhd-status-inprogress; }
+
+// =============================================================================
+// Recent activity
+// =============================================================================
+
+.mhd-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mhd-activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: v.$mhd-space-sm;
+  padding: v.$mhd-space-sm 0;
+  border-bottom: 1px solid var(--mhd-color-border);
+  flex-wrap: wrap;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.mhd-activity-link {
+  display: flex;
+  align-items: baseline;
+  gap: v.$mhd-space-sm;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover .mhd-activity-subject,
+  &:focus .mhd-activity-subject {
+    text-decoration: underline;
+  }
+}
+
+.mhd-activity-ref {
+  font-size: var(--mhd-font-size-xs);
+  font-weight: var(--mhd-font-weight-semibold);
+  color: var(--mhd-color-text-muted);
+  flex: 0 0 auto;
+}
+
+.mhd-activity-subject {
+  font-size: var(--mhd-font-size-sm);
+  color: var(--mhd-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mhd-activity-meta {
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  flex: 0 0 auto;
+}
+
+.mhd-activity-time {
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+  white-space: nowrap;
+}

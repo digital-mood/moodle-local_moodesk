@@ -1,0 +1,108 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/ticket_detail_thread
+
+    Ticket detail — the conversation. Rendered inside .mhd-detail__main by
+    ticket_detail.mustache.
+
+    Every entry keeps its own identity in the markup: an internal note, a system
+    event, a reply reached across a merge link and the viewer's own messages all
+    read differently, because an agent scanning the thread has to be able to tell
+    at a glance whose message this is and who can see it.
+
+    Context variables:
+      * thread[]    - Array of thread entries. Each entry has: authorname, isnote, isown,
+                      issystem, timecreated, message, hasattachments, and attachments[] where
+                      each attachment exposes url, filename, and size. Entries that came from a
+                      ticket merged into this one also carry islinked, linkedfrom (source ticket
+                      id) and linkedurl.
+      * isterminal  - True when the ticket is in a terminal state (renders end-of-conversation notice)
+
+    Example context (json):
+    {
+      "isterminal": false,
+      "thread": [
+        {
+          "authorname": "Jane Doe",
+          "isnote": false,
+          "isown": true,
+          "issystem": false,
+          "islinked": false,
+          "timecreated": "8 May 2026, 10:30",
+          "message": "<p>Looking into this now.</p>",
+          "hasattachments": false
+        }
+      ]
+    }
+}}
+
+{{! role="log", not on the scrollport around it: that one also holds the custom
+    fields and the merged source fields, and turning those into a live region
+    would have a screen reader announce administrative data as conversation.
+    aria-relevant is narrowed to additions — an entry appearing is news, an edit
+    inside one already read is not. The region's name comes from the scrollport,
+    so this element is deliberately unnamed rather than named twice. }}
+<div class="mhd-thread" role="log" aria-relevant="additions">
+  {{#thread}}
+  <article class="mhd-thread-entry{{#isnote}} mhd-thread-note{{/isnote}}{{#isown}} mhd-thread-own{{/isown}}{{#issystem}} mhd-thread-system{{/issystem}}{{#islinked}} mhd-thread-linked{{/islinked}}">
+    <div class="mhd-thread-entry__head">
+      <span class="mhd-thread-entry__author">
+        <strong>{{authorname}}</strong>
+        {{#isnote}}
+        <span class="mhd-pill mhd-pill--warning">
+          {{#str}} reply_internal_note_label, local_moodesk {{/str}}
+        </span>
+        {{/isnote}}
+        {{#issystem}}
+        <span class="mhd-pill mhd-pill--neutral">
+          {{#str}} reply_system_event_label, local_moodesk {{/str}}
+        </span>
+        {{/issystem}}
+        {{#islinked}}
+        <a href="{{linkedurl}}" class="mhd-pill mhd-pill--link">
+          {{#str}} merge_linked_reply_label, local_moodesk, {{linkedfrom}} {{/str}}
+        </a>
+        {{/islinked}}
+      </span>
+      <small class="mhd-thread-entry__time">{{timecreated}}</small>
+    </div>
+    <div class="mhd-thread-entry__body">
+      {{{message}}}
+      {{#hasattachments}}
+      <ul class="mhd-attachment-list">
+        {{#attachments}}
+        <li>
+          <a href="{{url}}" class="mhd-attachment-item" download>
+            <span class="mhd-attachment-icon" aria-hidden="true"></span>
+            <span class="mhd-attachment-name">{{filename}}</span>
+            <span class="mhd-attachment-size">{{size}}</span>
+          </a>
+        </li>
+        {{/attachments}}
+      </ul>
+      {{/hasattachments}}
+    </div>
+  </article>
+  {{/thread}}
+
+  {{#isterminal}}
+  <p class="mhd-thread-terminal" role="note">
+    {{#str}} ticket_terminal_notice, local_moodesk {{/str}}
+  </p>
+  {{/isterminal}}
+</div>

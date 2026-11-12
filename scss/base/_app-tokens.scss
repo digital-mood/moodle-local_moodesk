@@ -1,0 +1,133 @@
+// =============================================================================
+// base/_app-tokens.scss
+//
+// mooDesk application-shell design tokens, emitted as CSS custom properties.
+//
+// WHY custom properties (not just SCSS variables): the standalone shell needs
+// runtime-themable tokens that are independent of the active Moodle theme, give
+// us a single override point, and make a future dark mode trivial
+// (`.moodesk-app[data-theme="dark"] { ... }`).
+//
+// SCOPING: every token is declared on `.moodesk-app`, never on `:root`. The
+// `.moodesk-app` wrapper is only rendered by the application shell (phase F2,
+// behind ui_mode = app). Until then this block matches no element, so it has
+// ZERO effect on legacy screens — F1 is visually inert and fully reversible.
+//
+// SOURCE OF TRUTH: values come from the SCSS tokens in abstracts/ so there is
+// one place to change them. Raw hex lives only in abstracts/_colors.scss.
+// =============================================================================
+
+@use '../abstracts/colors' as c;
+@use '../abstracts/variables' as v;
+
+.moodesk-app {
+  // ── Color: brand / primary ────────────────────────────────────────────────
+  --mhd-color-primary:        #{c.$mhd-color-primary};
+  --mhd-color-primary-strong: #{c.$mhd-color-primary-strong};
+  --mhd-color-primary-soft:   #{c.$mhd-color-primary-soft};
+
+  // ── Color: surfaces ───────────────────────────────────────────────────────
+  --mhd-color-canvas:         #{c.$mhd-color-canvas};
+  --mhd-color-surface:        #{c.$mhd-color-surface};
+  --mhd-color-surface-muted:  #{c.$mhd-color-surface-muted};
+
+  // ── Color: text ───────────────────────────────────────────────────────────
+  --mhd-color-text:           #{c.$mhd-color-text};
+  --mhd-color-text-muted:     #{c.$mhd-color-text-muted};
+  --mhd-color-text-inverse:   #{c.$mhd-color-text-inverse};
+
+  // ── Color: borders ────────────────────────────────────────────────────────
+  --mhd-color-border:         #{c.$mhd-color-border};
+  --mhd-color-border-strong:  #{c.$mhd-color-border-strong};
+
+  // ── Color: feedback ───────────────────────────────────────────────────────
+  --mhd-color-success: #{c.$mhd-color-success};
+  --mhd-color-info:    #{c.$mhd-color-info};
+  --mhd-color-warning: #{c.$mhd-color-warning};
+  --mhd-color-danger:  #{c.$mhd-color-danger};
+  // For warnings set as text rather than painted as a fill — see colors.
+  --mhd-color-warning-text: #{c.$mhd-color-warning-text};
+
+  // ── Color: focus ring ─────────────────────────────────────────────────────
+  --mhd-color-focus: #{c.$mhd-color-focus};
+
+  // ── Spacing scale ─────────────────────────────────────────────────────────
+  --mhd-space-xs: #{v.$mhd-space-xs};
+  --mhd-space-sm: #{v.$mhd-space-sm};
+  --mhd-space-md: #{v.$mhd-space-md};
+  --mhd-space-lg: #{v.$mhd-space-lg};
+  --mhd-space-xl: #{v.$mhd-space-xl};
+
+  // ── Border radii ──────────────────────────────────────────────────────────
+  --mhd-radius-sm:   #{v.$mhd-radius-sm};
+  --mhd-radius-md:   #{v.$mhd-radius-md};
+  --mhd-radius-lg:   #{v.$mhd-radius-lg};
+  --mhd-radius-pill: #{v.$mhd-radius-pill};
+  --mhd-radius-full: #{v.$mhd-radius-full};
+
+  // ── Typography ────────────────────────────────────────────────────────────
+  // Family inherits the active theme's font (Moodle-native base, no new deps).
+  --mhd-font-family: inherit;
+  --mhd-font-size-xs: #{v.$mhd-font-size-xs};
+  --mhd-font-size-sm: #{v.$mhd-font-size-sm};
+  --mhd-font-size-md: #{v.$mhd-font-size-md};
+  --mhd-font-size-lg: #{v.$mhd-font-size-lg};
+  --mhd-font-size-xl: #{v.$mhd-font-size-xl};
+  --mhd-font-weight-regular:  #{v.$mhd-font-weight-regular};
+  --mhd-font-weight-medium:   #{v.$mhd-font-weight-medium};
+  --mhd-font-weight-semibold: #{v.$mhd-font-weight-semibold};
+  --mhd-font-weight-bold:     #{v.$mhd-font-weight-bold};
+  --mhd-line-height:       #{v.$mhd-line-height};
+  --mhd-line-height-tight: #{v.$mhd-line-height-tight};
+
+  // ── Elevation ─────────────────────────────────────────────────────────────
+  --mhd-shadow-card:   #{v.$mhd-shadow-card};
+  --mhd-shadow-drawer: #{v.$mhd-shadow-drawer};
+
+  // ── Motion ────────────────────────────────────────────────────────────────
+  --mhd-transition-fast: #{v.$mhd-transition-fast};
+
+  // ── Shell dimensions ──────────────────────────────────────────────────────
+  --mhd-sidebar-width:           #{v.$mhd-sidebar-width};
+  --mhd-sidebar-width-collapsed: #{v.$mhd-sidebar-width-collapsed};
+  --mhd-topbar-height:           #{v.$mhd-topbar-height};
+
+  // ── Overlay drawer (new ticket) ───────────────────────────────────────────
+  --mhd-drawer-width:    #{v.$mhd-drawer-width};
+  --mhd-drawer-backdrop: #{v.$mhd-drawer-backdrop};
+
+  // ── Ticket detail ─────────────────────────────────────────────────────────
+  --mhd-detail-drawer-width:      #{v.$mhd-detail-drawer-width};
+  --mhd-detail-rail-width:        #{v.$mhd-detail-rail-width};
+  --mhd-detail-drawer-rail-width: #{v.$mhd-detail-drawer-rail-width};
+  --mhd-detail-drawer-pad:        #{v.$mhd-detail-drawer-pad};
+
+  // ── Status and priority hues ──────────────────────────────────────────────
+  // Also read at runtime by the dashboard's chart module: Chart.js needs its
+  // colours in JavaScript, and a second palette hardcoded there would drift
+  // from this one the first time a hue changed. Keyed by the numeric value
+  // stored in the database so a lookup needs no translation table.
+  --mhd-status-0: #{c.$mhd-status-new};
+  --mhd-status-1: #{c.$mhd-status-open};
+  --mhd-status-2: #{c.$mhd-status-pending};
+  --mhd-status-3: #{c.$mhd-status-on-hold};
+  --mhd-status-4: #{c.$mhd-status-resolved};
+  --mhd-status-5: #{c.$mhd-status-closed};
+  --mhd-status-6: #{c.$mhd-status-inprogress};
+
+  --mhd-priority-0: #{c.$mhd-priority-low};
+  --mhd-priority-1: #{c.$mhd-priority-normal};
+  --mhd-priority-2: #{c.$mhd-priority-high};
+  --mhd-priority-3: #{c.$mhd-priority-urgent};
+
+  // Ticket aging bands, keyed by bucket. They darken with age on purpose: the
+  // older a ticket is, the more it should pull the eye, because age is the
+  // problem the panel exists to surface. The hues are borrowed from the status
+  // and priority scales rather than invented, and named here so the pie and the
+  // bars cannot drift apart.
+  --mhd-aging-0: #{c.$mhd-status-resolved};
+  --mhd-aging-1: #{c.$mhd-status-inprogress};
+  --mhd-aging-2: #{c.$mhd-status-pending};
+  --mhd-aging-3: #{c.$mhd-priority-high};
+  --mhd-aging-4: #{c.$mhd-priority-urgent};
+}

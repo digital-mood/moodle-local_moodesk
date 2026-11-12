@@ -1,0 +1,495 @@
+// =============================================================================
+// modules/_ticket-list.scss
+// PRO-1 App-style ticket list.
+//
+// Layout per row — 3 zones:
+//   [bulk]  [main: subject + meta-pills]  [right: SLA + time]
+//
+// Desktop grid tracks:
+//   Agent : 32px  1fr  auto
+//   User  :        1fr  auto
+//
+// Below 992px: card layout (border, shadow, flex-wrap).
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+@use '../abstracts/zindex'      as z;
+@use '../components/avatar' as av;
+
+// =============================================================================
+// Page wrapper
+// =============================================================================
+
+.mhd-ticket-list {
+  width: 100%;
+  padding-top: v.$mhd-space-md;
+  padding-inline: v.$mhd-page-padding-desktop;
+
+  @include bp.mhd-respond-to('wide') {
+    padding-inline: v.$mhd-page-padding-wide;
+  }
+
+  @include bp.mhd-respond-to('below-desktop') {
+    padding-inline: v.$mhd-page-padding-tablet;
+  }
+
+  // The shell already pads the content region on phones; a second gutter here
+  // would cost width the rows need.
+  @include bp.mhd-respond-to('mobile') {
+    padding: 0;
+  }
+}
+
+// =============================================================================
+// Rows container
+// =============================================================================
+
+.mhd-ticket-rows {
+  border: 1px solid #e9ecef;
+  border-radius: v.$mhd-radius-md;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #fff;
+
+  @include bp.mhd-respond-to('below-desktop') {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+  }
+}
+
+// =============================================================================
+// List controls — the two controls that act on the whole list
+// =============================================================================
+//
+// Select-all sits on the left, aligned to the row grid's 32px checkbox track so
+// it reads as the head of that column; the SLA sort link keeps the right edge it
+// already had. Below desktop the rows become cards and their checkbox moves to
+// the card's top-right corner, so the alignment claim stops being true and the
+// control simply falls back to reading as a label.
+
+.mhd-list-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: v.$mhd-space-sm;
+  padding: 0.25rem v.$mhd-space-md;
+  // The SLA link is the only child when the viewer cannot bulk-edit; keeping it
+  // pushed right preserves the layout this bar replaced.
+  > :only-child {
+    margin-left: auto;
+  }
+}
+
+.mhd-list-controls-selectall {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+  margin-bottom: 0;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    // Centre the box on the row grid's 32px track: 32px track, 16px box.
+    margin-inline: calc((32px - 16px) / 2);
+  }
+
+  @include bp.mhd-respond-to('below-desktop') {
+    input[type="checkbox"] {
+      margin-inline: 0;
+    }
+  }
+}
+
+// =============================================================================
+// Ticket row
+// =============================================================================
+
+.mhd-ticket-row {
+  display: grid;
+  grid-template-columns: 1fr auto; // user: main | right
+  align-items: center;
+  column-gap: v.$mhd-space-md;
+  padding: v.$mhd-space-sm v.$mhd-space-md;
+  min-height: v.$mhd-row-min-height;
+  border-bottom: 1px solid #f0f2f4;
+  cursor: pointer;
+  transition: background-color v.$mhd-transition-fast;
+  position: relative;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: #f8f9fb;
+
+    .mhd-row-quick-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mhd-row-right {
+      opacity: 0; // hide time/SLA when quick actions are visible
+    }
+  }
+
+  // SLA state row tints — very subtle left border accent.
+  &.mhd-row-breach {
+    border-left: 3px solid #dc3545;
+    padding-left: calc(#{v.$mhd-space-md} - 3px);
+  }
+
+  &.mhd-row-warning {
+    border-left: 3px solid #ffc107;
+    padding-left: calc(#{v.$mhd-space-md} - 3px);
+  }
+
+  // Agent layout: prepend bulk checkbox column.
+  .is-agent & {
+    grid-template-columns: 32px 1fr auto;
+  }
+
+  // Below desktop: card.
+  @include bp.mhd-respond-to('below-desktop') {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: v.$mhd-space-md;
+    margin-bottom: v.$mhd-space-sm;
+    border: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+    border-radius: v.$mhd-radius-md;
+    background: #fff;
+    box-shadow: v.$mhd-shadow-card;
+    gap: v.$mhd-space-xs v.$mhd-space-sm;
+    min-height: 0;
+
+    &:last-child {
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    &:hover {
+      background-color: #fafbff;
+      box-shadow: v.$mhd-shadow-card-hover;
+
+      .mhd-row-quick-actions {
+        opacity: 0;       // hide quick actions on touch/tablet
+        pointer-events: none;
+      }
+
+      .mhd-row-right {
+        opacity: 1;
+      }
+    }
+
+    // Remove SLA accent border on cards (cleaner look).
+    &.mhd-row-breach,
+    &.mhd-row-warning {
+      border-left: 1px solid #e9ecef;
+      padding-left: v.$mhd-space-md;
+    }
+  }
+
+  @include bp.mhd-respond-to('mobile') {
+    padding: v.$mhd-space-sm v.$mhd-space-md;
+  }
+}
+
+// Overlay link — makes the entire row clickable.
+.mhd-ticket-row-link {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  text-decoration: none;
+  border-radius: inherit;
+
+  &:focus-visible {
+    outline: 2px solid #0d6efd;
+    outline-offset: -2px;
+    border-radius: v.$mhd-radius-sm;
+  }
+}
+
+// =============================================================================
+// Bulk checkbox column — always visible for agents.
+// =============================================================================
+
+// Both bulk checkboxes — the per-row one and the select-all at the head of the
+// column — are the same control, so they are described once.
+.mhd-row-bulk input[type="checkbox"],
+.mhd-list-controls-selectall input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: c.$mhd-status-open;
+  flex-shrink: 0;
+}
+
+.mhd-row-bulk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1; // above overlay link
+
+  @include bp.mhd-respond-to('below-desktop') {
+    position: absolute;
+    top: v.$mhd-space-md;
+    right: v.$mhd-space-md;
+    width: auto;
+    height: auto;
+  }
+
+  // The card tightens its vertical padding on phones; the box follows it up so
+  // it sits on the same line as the SLA pill rather than below it.
+  @include bp.mhd-respond-to('mobile') {
+    top: v.$mhd-space-sm;
+  }
+}
+
+// A row whose bulk checkbox is ticked (bulk_actions.js applies the class from
+// the box, never on its own). The tint is a layer over whatever surface the row
+// already has, not a replacement for it: as a background-color it took the
+// below-desktop card's white away and let the grey canvas through, so a chosen
+// card looked sunk rather than selected. A gradient of one colour is the only
+// way to paint a translucent fill over a background-color in one element.
+.mhd-ticket-row.mhd-bulk-selected {
+  background-image: linear-gradient(c.$mhd-color-row-selected, c.$mhd-color-row-selected);
+}
+
+// =============================================================================
+// Main content — subject line + meta-pills.
+// =============================================================================
+
+.mhd-row-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  @include bp.mhd-respond-to('below-desktop') {
+    flex: 1 1 100%;
+    order: 2;
+  }
+}
+
+// Subject line: subject text + ticket ID.
+.mhd-row-subject-line {
+  display: flex;
+  align-items: baseline;
+  gap: v.$mhd-space-xs;
+  min-width: 0;
+}
+
+.mhd-ticket-subject {
+  font-size: 0.9375rem; // 15px
+  font-weight: 500;
+  color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+
+  @include bp.mhd-respond-to('below-desktop') {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+}
+
+.mhd-ticket-id {
+  font-size: v.$mhd-font-size-xs;
+  color: #adb5bd;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// Meta-pills row: status, priority, category, department, assignee.
+.mhd-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+
+  // Requester avatar inside meta (user-facing view). A chip's leading icon
+  // rather than a portrait, so it keeps its own 18px — but it takes the same
+  // frame as every other avatar, so a requester with no photograph gets a
+  // circle of initials the same size as the next requester's face instead of
+  // an unsized span the chip has to grow around.
+  .mhd-row-meta__avatar {
+    @include av.mhd-avatar-frame(18px);
+    display: inline-flex;
+    vertical-align: middle;
+  }
+
+  a {
+    position: relative;
+    z-index: 1;
+    line-height: 0; // collapse anchor around avatar
+  }
+}
+
+// The meta chips (category, department, requester, assignee) are Pills — see
+// components/_pill.scss. Only the one thing the component cannot know is here:
+// an unassigned ticket says so in words, and the words are not a name.
+.mhd-meta-assignee.mhd-assignee-unassigned {
+  color: c.$mhd-color-text-muted;
+  font-style: italic;
+}
+
+// =============================================================================
+// Right column — SLA badge + updated time.
+// Transitions out on hover so quick actions can take its place.
+// =============================================================================
+
+.mhd-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 0; // let the column shrink instead of pushing the card wider
+  transition: opacity v.$mhd-transition-fast;
+
+  // As a card, the head reads top-down instead of right-to-left: the SLA pill
+  // opens the card on the left, the timestamp sits under it, and the right edge
+  // is left to the bulk checkbox. The checkbox is positioned absolutely, so the
+  // padding is the only thing keeping the two apart — without it the box lands
+  // on top of the timestamp, which is what a right-aligned single row did at
+  // every width from 576 to 991.
+  @include bp.mhd-respond-to('below-desktop') {
+    order: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: v.$mhd-space-xs;
+    flex: 1 1 100%;
+    padding-right: v.$mhd-space-lg;
+    opacity: 1 !important; // always visible on cards
+  }
+}
+
+.mhd-row-updated {
+  font-size: v.$mhd-font-size-xs;
+  color: #adb5bd;
+  white-space: nowrap;
+
+  // In card mode the timestamp is a full date ("Thursday, 13 August 2026,
+  // 1:31 PM"): ~200px that no phone has to spare on one line. Stacked under the
+  // pill, it reads from the same left edge.
+  @include bp.mhd-respond-to('below-desktop') {
+    white-space: normal;
+    text-align: left;
+  }
+}
+
+// The SLA badge — time remaining, or "OVERDUE" — is a Pill in the danger or
+// warning variant. See components/_pill.scss.
+
+// =============================================================================
+// Hover quick actions — agents only.
+// Absolutely positioned over the right column; fade in on row hover.
+// =============================================================================
+
+.mhd-row-quick-actions {
+  position: absolute;
+  right: v.$mhd-space-md;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity v.$mhd-transition-fast;
+  z-index: 2; // above overlay link
+
+  @include bp.mhd-respond-to('below-desktop') {
+    display: none; // quick actions are desktop-only
+  }
+}
+
+// The quick actions themselves are the Button component in the elevated
+// variant — see components/_button.scss. Only the toolbar that holds them is
+// laid out here.
+
+.mhd-quick-status-select {
+  padding: 8px 24px 8px 10px;
+  font-size: v.$mhd-font-size-xs;
+  border: 1px solid #dee2e6;
+  border-radius: v.$mhd-radius-sm;
+  background-color: #fff;
+  color: #495057;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23adb5bd' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+
+  &:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+  }
+}
+
+// =============================================================================
+// Bulk action toolbar
+// =============================================================================
+
+// Sticky under the shell's top bar: with a page of thirty
+// rows, an agent selecting at the bottom would otherwise scroll back up to act.
+// The page scrolls the document, not an inner region, so the offset is the top
+// bar's height, the same one the ticket detail rail clears. Flush against the
+// bar, with no gap for rows to show through, and an opaque fill: rows slide
+// underneath it.
+.mhd-bulk-toolbar {
+  position: sticky;
+  top: var(--mhd-topbar-height, 60px);
+  z-index: z.$mhd-z-toolbar;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-sm;
+  padding: v.$mhd-space-sm v.$mhd-space-md;
+  background: #f0f4ff;
+  border: 1px solid #c7d7fb;
+  border-radius: v.$mhd-radius-md;
+  margin-bottom: v.$mhd-space-sm;
+  animation: mhd-toolbar-in 0.15s ease;
+}
+
+.mhd-bulk-count {
+  font-size: v.$mhd-font-size-sm;
+  font-weight: 600;
+  color: #0d3d9e;
+  white-space: nowrap;
+  margin-right: v.$mhd-space-xs;
+}
+
+.mhd-bulk-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-sm;
+  flex: 1;
+}
+
+.mhd-bulk-params {
+  display: flex;
+  align-items: center;
+
+  select {
+    min-width: 160px;
+  }
+}
+
+.mhd-bulk-action-select {
+  min-width: 160px;
+}

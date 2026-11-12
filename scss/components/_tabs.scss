@@ -1,0 +1,36 @@
+// =============================================================================
+// components/_tabs.scss
+// Agent workspace tab bar (Phase 3).
+// Extends Bootstrap .nav-tabs with product-specific styling.
+// =============================================================================
+
+@use '../abstracts/colors'    as c;
+@use '../abstracts/variables' as v;
+
+.mhd-workspace-tabs {
+  border-bottom: 2px solid #dee2e6;
+  margin-bottom: v.$mhd-space-md;
+
+  .nav-link {
+    font-size: v.$mhd-font-size-sm;
+    font-weight: 500;
+    color: #6c757d;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: v.$mhd-space-sm v.$mhd-space-md;
+    transition: color v.$mhd-transition-fast, border-color v.$mhd-transition-fast;
+    border-radius: 0;
+
+    &:hover {
+      color: c.$mhd-tab-active-color;
+      border-bottom-color: #adb5bd;
+    }
+
+    &.active {
+      color: c.$mhd-tab-active-color;
+      border-bottom-color: c.$mhd-tab-active-color;
+      background: none;
+    }
+  }
+}

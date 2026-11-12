@@ -1,0 +1,261 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/ticket_list_results
+
+    The part of the ticket list that answers the query: the list controls bar,
+    the empty state, the rows and the pagination.
+
+    One template, two callers, and that is the whole point of it existing.
+    local_moodesk/ticket_list includes it as a partial for the initial paint, and
+    the ticket_list_results fragment renders it on its own when a mutation may
+    have changed what the query returns. Both are handed the context built by
+    \local_moodesk\output\ticket_list_results, so there is no second rendering
+    path for the two to drift apart into.
+
+    Everything outside this region — the filter bar, the active chips, the saved
+    views, the bulk toolbar — is a function of the URL and the viewer's
+    capabilities rather than of the result, so none of it is rebuilt here.
+
+    The wrapper carries the region hook local_moodesk/ticket_list swaps, and the
+    address of the list it belongs to. That address is published in the markup
+    rather than read from window.location because the detail drawer pushes the
+    open ticket's URL: by refresh time the address bar names a ticket, not the
+    list behind it.
+
+    Context variables:
+      * listurl          - The list URL these results answer, filters and page included
+      * showlistcontrols - True when the list controls bar has something to show
+      * canbulk          - Viewer holds :manage
+      * issortingbysla   - The list is already sorted by SLA urgency
+      * sortslaurl       - URL that applies the SLA sort
+      * empty            - True when the query matched nothing
+      * emptystatetitle  - Heading of the empty state, worded for the current view
+      * emptystatedesc   - Body of the empty state
+      * submiturl        - New ticket URL, the empty state's invitation
+      * tickets          - Row data
+      * quickstatusoptions - Options for a row's inline status change: [{value, label}]
+      * paginationbar    - Rendered pagination HTML
+      * total            - Total matching tickets, before pagination
+
+    Example context (json):
+    {
+      "listurl": "/local/moodesk/index.php?view=all",
+      "showlistcontrols": true,
+      "canbulk": true,
+      "issortingbysla": false,
+      "sortslaurl": "/local/moodesk/index.php?view=all&sort=sla",
+      "empty": false,
+      "emptystatetitle": "No tickets yet",
+      "emptystatedesc": "Tickets raised here will show up in this list.",
+      "submiturl": "/local/moodesk/submit.php",
+      "total": 1,
+      "paginationbar": "",
+      "quickstatusoptions": [{"value": 1, "label": "Pending"}],
+      "tickets": [
+        {
+          "id": 42,
+          "subject": "Cannot access course",
+          "status": 0,
+          "statuslabel": "Open",
+          "priority": 2,
+          "prioritylabel": "High",
+          "categoryname": "Access",
+          "hasdepartment": false,
+          "departmentname": "",
+          "requesterfullname": "Ada Lovelace",
+          "requesteravatar": "",
+          "assigneename": "Unassigned",
+          "isunassigned": true,
+          "sla_breach": false,
+          "sla_warning": false,
+          "sla_visible": false,
+          "sla_timelabel": "",
+          "timecreated": "1 Jan 2026",
+          "timeupdated": "2h ago",
+          "viewurl": "/local/moodesk/view.php?id=42"
+        }
+      ]
+    }
+}}
+<div class="mhd-ticket-list-results"
+     data-region="mhd-ticket-list-results"
+     data-listurl="{{listurl}}">
+
+  {{! ── List controls: select-all on the left, SLA sort on the right ──
+      One bar, because these are the two controls that act on the list as a
+      whole rather than on any one ticket. The select-all cannot live in the
+      bulk toolbar: that toolbar is hidden until something is selected, and
+      selecting is what this control is for. }}
+  {{#showlistcontrols}}
+  <div class="mhd-list-controls">
+
+    {{#canbulk}}
+    <label class="mhd-list-controls-selectall">
+      <input type="checkbox"
+             id="mhd-select-all"
+             aria-label="{{#str}} bulk_select_all, local_moodesk {{/str}}">
+      <span>{{#str}} bulk_select_all_short, local_moodesk {{/str}}</span>
+    </label>
+    {{/canbulk}}
+
+    {{^issortingbysla}}
+    <a href="{{sortslaurl}}" class="mhd-sla-sort-link">
+      {{#str}} sort_by_sla_urgency, local_moodesk {{/str}}
+    </a>
+    {{/issortingbysla}}
+
+  </div>
+  {{/showlistcontrols}}
+
+  {{! ── Empty state ── }}
+  {{#empty}}
+  <div class="mhd-empty-state">
+    <svg class="mhd-empty-state-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="8" width="36" height="32" rx="4" stroke="#6c757d" stroke-width="2.5"/>
+      <path d="M6 18h36" stroke="#6c757d" stroke-width="2.5"/>
+      <path d="M16 27h16M16 33h10" stroke="#6c757d" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <p class="mhd-empty-state-title">{{emptystatetitle}}</p>
+    <p class="mhd-empty-state-desc">{{emptystatedesc}}</p>
+    {{! Nothing to triage yet: the invitation, at the default size. }}
+    <a href="{{submiturl}}" class="mhd-btn mhd-btn--filled"
+       data-action="mhd-open-new-ticket">
+      <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+        <use href="#mhd-icon-newticket"></use>
+      </svg>
+      {{#str}} ticket_new, local_moodesk {{/str}}
+    </a>
+  </div>
+  {{/empty}}
+
+  {{! ── Ticket rows ── }}
+  {{^empty}}
+  {{! is-agent adds the 32px checkbox column to the row grid, so it
+      follows the checkbox itself: an agent without :manage renders no
+      checkbox and must not get an empty column where one would be. }}
+  <div class="mhd-ticket-rows{{#canbulk}} is-agent{{/canbulk}}">
+
+    {{#tickets}}
+    <div class="mhd-ticket-row{{#sla_breach}} mhd-row-breach{{/sla_breach}}{{#sla_warning}} mhd-row-warning{{/sla_warning}}">
+
+      {{! Overlay link — covers the full row for click navigation. It stays a
+          real link to the canonical ticket page: ticket_detail_drawer.js
+          upgrades it into the drawer trigger, and modifier-clicks, middle
+          clicks and no-JS sessions still navigate to view.php. }}
+      <a href="{{viewurl}}"
+         class="mhd-ticket-row-link"
+         data-action="mhd-open-detail"
+         data-ticketid="{{id}}"
+         aria-label="{{subject}}"></a>
+
+      {{! Bulk checkbox — needs :manage. Always visible, z-index above overlay. }}
+      {{#canbulk}}
+      <div class="mhd-row-bulk">
+        <input type="checkbox"
+               class="mhd-bulk-check"
+               value="{{id}}"
+               aria-label="{{#str}} bulk_select_ticket, local_moodesk, {{id}} {{/str}}">
+      </div>
+      {{/canbulk}}
+
+      {{! Main content: subject line + meta-pills }}
+      <div class="mhd-row-main">
+
+        <div class="mhd-row-subject-line">
+          <span class="mhd-ticket-subject">{{subject}}</span>
+          <span class="mhd-ticket-id">#{{id}}</span>
+        </div>
+
+        <div class="mhd-row-meta">
+          <span class="mhd-pill mhd-pill--status-{{status}}">{{statuslabel}}</span>
+          <span class="mhd-pill mhd-pill--priority-{{priority}}">{{prioritylabel}}</span>
+          {{#categoryname}}<span class="mhd-pill mhd-pill--muted"><span class="mhd-pill__label">{{categoryname}}</span></span>{{/categoryname}}
+          {{#isagent}}
+          {{#hasdepartment}}<span class="mhd-pill mhd-pill--dept"><span class="mhd-pill__label">{{departmentname}}</span></span>{{/hasdepartment}}
+          <span class="mhd-pill mhd-pill--muted"><span class="mhd-pill__label">{{#str}}ticketlist_from, local_moodesk{{/str}}: {{requesterfullname}}</span></span>
+          <span class="mhd-pill mhd-pill--muted mhd-meta-assignee{{#isunassigned}} mhd-assignee-unassigned{{/isunassigned}}"><span class="mhd-pill__label">{{#str}}ticketlist_to, local_moodesk{{/str}}: {{assigneename}}</span></span>
+          {{/isagent}}
+          {{^isagent}}
+          {{! The avatar is the chip's leading icon, so the left padding
+              tightens to M3's icon-side spacing. }}
+          <span class="mhd-pill mhd-pill--muted mhd-pill--leading-icon">
+            {{! Wrapped so the avatar frame has something to sit on: core sends
+                either an `<img>` or a `.userinitials` span, and the frame is
+                what makes those two the same size. See components/_avatar.scss. }}
+            <span class="mhd-row-meta__avatar">{{{requesteravatar}}}</span>
+            <span class="mhd-pill__label">{{requesterfullname}}</span>
+          </span>
+          {{/isagent}}
+        </div>
+
+      </div>
+
+      {{! Right column: SLA badge + updated time }}
+      <div class="mhd-row-right">
+        {{#sla_visible}}
+        <span class="mhd-pill{{#sla_breach}} mhd-pill--danger{{/sla_breach}}{{#sla_warning}} mhd-pill--warning{{/sla_warning}}">
+          {{sla_timelabel}}
+        </span>
+        {{/sla_visible}}
+        <span class="mhd-row-updated">{{timeupdated}}</span>
+      </div>
+
+      {{! Quick actions — shown on row hover. These post to bulk_action.php
+          with a single id, so they need :manage exactly as the toolbar does. }}
+      {{#canbulk}}
+      <div class="mhd-row-quick-actions" role="toolbar" aria-label="{{#str}} quickaction_set_status, local_moodesk {{/str}}">
+
+        {{! Assign to me. It floats over the row on hover, which is the one case M3
+            gives elevated: a button that has to separate itself from content
+            behind it rather than sit on a surface of its own. }}
+        {{#isunassigned}}
+        <button type="button"
+                class="mhd-btn mhd-btn--elevated mhd-btn--xsmall mhd-quick-assign-me"
+                data-ticketid="{{id}}"
+                data-action="assign_me">
+          {{#str}} quickaction_assign_me, local_moodesk {{/str}}
+        </button>
+        {{/isunassigned}}
+
+        {{! Inline status change }}
+        <select class="mhd-quick-status-select"
+                data-ticketid="{{id}}"
+                data-action="set_status"
+                aria-label="{{#str}} quickaction_set_status, local_moodesk {{/str}}">
+          <option value="">{{#str}} quickaction_set_status, local_moodesk {{/str}}</option>
+          {{! Its own list, not the filter bar's. The two happened to share
+              `filterstatuses` while both were built in index.php; the filter bar
+              is outside this region and does not travel with a refresh, so the
+              row would have rendered an empty dropdown after one. }}
+          {{#quickstatusoptions}}
+          <option value="{{value}}">{{label}}</option>
+          {{/quickstatusoptions}}
+        </select>
+
+      </div>
+      {{/canbulk}}
+
+    </div>
+    {{/tickets}}
+
+  </div>
+
+  {{{paginationbar}}}
+  {{/empty}}
+
+</div>

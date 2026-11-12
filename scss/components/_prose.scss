@@ -1,0 +1,172 @@
+// =============================================================================
+// components/_prose.scss
+//
+// The Prose — rendered rich text, read as a document.
+//
+// A block of HTML that came out of an editor and through format_text(): the
+// body of a knowledge base article today; a ticket conversation, a category
+// description or a release note tomorrow, if and when those surfaces adopt it.
+// It gives that HTML the type it needs to be read — a heading scale, paragraph
+// rhythm, lists that indent, quotes that look quoted, code that looks like
+// code, tables and images that never leave the column — without knowing or
+// caring which screen it is on.
+//
+// ── What it deliberately is NOT ──────────────────────────────────────────────
+// It is not the editor's stylesheet. TinyMCE and Atto draw their own editing
+// surface inside an iframe or a contenteditable of their own, with their own
+// stylesheet, and nothing here reaches into either of them (UI plan §3: no
+// rules against the editor's internal markup unless a reproducible problem
+// forces one). The split is the point: the EDITOR gets no SCSS from this
+// plugin; the RENDERED RESULT gets this component.
+//
+// It is not applied to anything but the knowledge base article body yet
+// (decision e, 2026-09-12). It is written so that it could be: every rule is
+// scoped to `.mhd-prose`, uses the product's tokens, and assumes nothing about
+// its container beyond "a column of readable width".
+//
+// ── Why `:where()` on the element selectors ──────────────────────────────────
+// The rules target bare elements under the component — `.mhd-prose h2`,
+// `.mhd-prose p` — and the theme has opinions about the same elements. Wrapping
+// the element half in `:where()` keeps each rule at the weight of one class, so
+// a module that needs to vary one thing for one screen can do it with a single
+// class of its own and no specificity contest. It is the same move
+// components/_datatable.scss makes, for the same reason.
+//
+// Colour tokens live in abstracts/_colors.scss, dimensions and type in
+// abstracts/_variables.scss — this file defines neither.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors'    as c;
+
+.mhd-prose {
+  font-size: v.$mhd-font-size-md;
+  line-height: 1.65;
+  color: c.$mhd-color-text;
+  // A URL or a long word pasted into a paragraph would otherwise widen the
+  // column past the surface; here it breaks instead.
+  overflow-wrap: break-word;
+
+  // The document's outline. Sizes step down from the page heading, which is
+  // the shell's <h1>, so an article's own <h1> — authors will write one — does
+  // not compete with the page's.
+  :where(h1, h2, h3, h4, h5, h6) {
+    margin: 1.6em 0 0.5em;
+    line-height: v.$mhd-line-height-tight;
+    font-weight: v.$mhd-font-weight-semibold;
+    color: c.$mhd-color-text;
+  }
+
+  :where(h1) { font-size: v.$mhd-font-size-xl; }
+  :where(h2) { font-size: v.$mhd-font-size-lg; }
+  :where(h3) { font-size: 1.0625rem; }
+  :where(h4, h5, h6) { font-size: v.$mhd-font-size-md; }
+
+  // Paragraph rhythm: one blank line's worth between blocks, none before the
+  // first or after the last, so the surface's own padding is the only margin
+  // the reader sees at either end.
+  :where(p, ul, ol, blockquote, pre, table, figure, hr) {
+    margin: 0 0 1em;
+  }
+
+  > :where(:first-child) {
+    margin-top: 0;
+  }
+
+  > :where(:last-child) {
+    margin-bottom: 0;
+  }
+
+  :where(ul, ol) {
+    padding-left: 1.5em;
+  }
+
+  :where(li + li) {
+    margin-top: 0.25em;
+  }
+
+  :where(a) {
+    color: c.$mhd-color-primary;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+
+    &:hover {
+      color: c.$mhd-color-primary-strong;
+    }
+  }
+
+  :where(strong, b) {
+    font-weight: v.$mhd-font-weight-semibold;
+  }
+
+  :where(blockquote) {
+    padding: v.$mhd-space-xs v.$mhd-space-md;
+    border-left: 3px solid c.$mhd-color-border-strong;
+    color: c.$mhd-color-text-muted;
+  }
+
+  :where(code, kbd, samp) {
+    font-size: 0.9em;
+    padding: 0.1em 0.35em;
+    border-radius: v.$mhd-radius-sm;
+    background: c.$mhd-color-surface-muted;
+  }
+
+  :where(pre) {
+    padding: v.$mhd-space-sm v.$mhd-space-md;
+    border-radius: v.$mhd-radius-md;
+    background: c.$mhd-color-surface-muted;
+    // Code keeps its lines; the block scrolls sideways rather than breaking
+    // them or widening the column.
+    overflow-x: auto;
+
+    :where(code) {
+      padding: 0;
+      background: transparent;
+    }
+  }
+
+  :where(hr) {
+    border: 0;
+    border-top: 1px solid c.$mhd-color-border;
+  }
+
+  // An embedded image is content, not decoration: shown at its own size up to
+  // the column, never beyond it, on its own line.
+  :where(img) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: v.$mhd-radius-md;
+  }
+
+  :where(figcaption) {
+    margin-top: v.$mhd-space-xs;
+    font-size: v.$mhd-font-size-sm;
+    color: c.$mhd-color-text-muted;
+  }
+
+  // A table an author drew is data in the article, not the product's Data
+  // Table: it wears a plain grid and takes the column's width, scrolling
+  // sideways if it must.
+  :where(table) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: v.$mhd-font-size-sm;
+  }
+
+  :where(th, td) {
+    padding: v.$mhd-space-xs v.$mhd-space-sm;
+    border: 1px solid c.$mhd-color-border;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  :where(th) {
+    font-weight: v.$mhd-font-weight-semibold;
+    background: c.$mhd-color-surface-muted;
+  }
+}

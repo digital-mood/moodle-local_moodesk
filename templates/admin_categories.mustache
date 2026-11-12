@@ -1,0 +1,177 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/admin_categories
+
+    Ticket category administration — list view of configured categories with edit/toggle actions.
+
+    Context variables:
+      * categories[]    - Array of category rows: {id, name, description, sortorder, visible, statuslabel,
+                          isdefault, editurl, listurl, togglelabel, toggledisabled, sesskey}
+      * hascategories   - True when at least one category exists
+      * newurl          - URL to create a new category
+
+    The product's table — components/_datatable.scss owns everything about how it
+    looks and what it does below 992px.
+
+    NO ENTITY CELL, deliberately. A category is configuration, not a thing with
+    an identity: it has no face and no mark, and a portrait frame here would be
+    decoration standing in for meaning. Its name is `.mhd-cell--name`, which is
+    the pattern's other way of titling a row.
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Categories",
+        "description": null,
+        "meta": null,
+        "actions": [],
+        "primaryaction": {
+          "label": "New Category",
+          "url": "/local/moodesk/category_edit.php",
+          "hasurl": true,
+          "icon": "plus",
+          "hasicon": true,
+          "icononly": true,
+          "variant": "filled",
+          "attributes": [],
+          "hasattributes": false
+        },
+        "hasactions": true
+      },
+      "hascategories": true,
+      "newurl": "/local/moodesk/admin/category_edit.php",
+      "categories": [
+        {
+          "id": 1,
+          "name": "Technical issue",
+          "sortorder": 10,
+          "visible": true,
+          "statuslabel": "Visible",
+          "isdefault": true,
+          "editurl": "/local/moodesk/admin/category_edit.php?id=1",
+          "listurl": "/local/moodesk/admin/categories.php",
+          "togglelabel": "Archive",
+          "toggledisabled": false,
+          "sesskey": "abc123"
+        }
+      ]
+    }
+}}
+<div class="mhd-admin-categories">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{#hascategories}}
+  <div class="mhd-datatable-surface">
+    <div class="mhd-datatable-scroll">
+    <table class="mhd-datatable table-reboot">
+      <caption class="mhd-sr-only">{{#str}} cat_admin_heading, local_moodesk {{/str}}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{#str}} category_name, local_moodesk {{/str}}</th>
+          <th scope="col" class="mhd-cell--numeric">{{#str}} category_sortorder, local_moodesk {{/str}}</th>
+          <th scope="col">{{#str}} ticket_status, local_moodesk {{/str}}</th>
+          <th scope="col"><span class="mhd-sr-only">{{#str}} actions, local_moodesk {{/str}}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#categories}}
+        <tr>
+          {{! Plain text on purpose — the row's action buttons own navigation.
+              The default marker sits beside the name rather than in a column of
+              its own: it is true of one row in the table. }}
+          <th scope="row" class="mhd-cell--name">
+            {{{name}}}
+            {{#isdefault}}
+            <span class="mhd-pill mhd-pill--info ml-1">{{#str}} cat_default_badge, local_moodesk {{/str}}</span>
+            {{/isdefault}}
+          </th>
+          <td class="mhd-cell--numeric mhd-cat-sortorder mhd-cell-pair mhd-cell-pair--inline">
+            <span class="mhd-cell-label">{{#str}} category_sortorder, local_moodesk {{/str}}</span>{{sortorder}}
+          </td>
+          <td class="mhd-cell--status">
+            <span class="mhd-pill {{#visible}}mhd-pill--success{{/visible}}{{^visible}}mhd-pill--neutral{{/visible}}">
+              {{statuslabel}}
+            </span>
+          </td>
+          <td class="mhd-cell--actions">
+            <div class="mhd-action-group">
+              <a href="{{editurl}}" class="mhd-btn mhd-btn--outlined mhd-btn--icon"
+                 aria-label="{{#str}} cat_edit_heading, local_moodesk {{/str}}"
+                 title="{{#str}} cat_edit_heading, local_moodesk {{/str}}">
+                <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+                  <use href="#mhd-icon-edit"></use>
+                </svg>
+              </a>
+              {{^toggledisabled}}
+              <form method="post" action="{{listurl}}">
+                <input type="hidden" name="action"     value="toggle">
+                <input type="hidden" name="categoryid" value="{{id}}">
+                <input type="hidden" name="sesskey"    value="{{sesskey}}">
+                <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--icon"
+                        aria-label="{{togglelabel}}" title="{{togglelabel}}">
+                  <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+                    <use href="{{#visible}}#mhd-icon-archive{{/visible}}{{^visible}}#mhd-icon-restore{{/visible}}"></use>
+                  </svg>
+                </button>
+              </form>
+              {{/toggledisabled}}
+              {{#toggledisabled}}
+              {{! The default category cannot be archived. The control stays,
+                  disabled, rather than disappearing: an action that is absent on
+                  some rows and present on others reads as an inconsistency,
+                  while a disabled one carrying its reason reads as an
+                  explanation. }}
+              <button type="button" class="mhd-btn mhd-btn--outlined mhd-btn--icon" disabled
+                      aria-label="{{#str}} cat_archive, local_moodesk {{/str}}"
+                      title="{{#str}} cat_default_cannot_archive, local_moodesk {{/str}}">
+                <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+                  <use href="#mhd-icon-archive"></use>
+                </svg>
+              </button>
+              {{/toggledisabled}}
+            </div>
+          </td>
+        </tr>
+        {{/categories}}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {{/hascategories}}
+
+  {{^hascategories}}
+  <div class="mhd-datatable-surface">
+    <div class="mhd-datatable-empty">
+      <div class="mhd-empty-state">
+        <svg class="mhd-empty-state-icon" aria-hidden="true" focusable="false">
+          <use href="#mhd-icon-categories"></use>
+        </svg>
+        <p class="mhd-empty-state-desc">{{#str}} cat_no_categories, local_moodesk {{/str}}</p>
+        <a href="{{newurl}}" class="mhd-btn mhd-btn--filled">
+          <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+            <use href="#mhd-icon-newticket"></use>
+          </svg>
+          {{#str}} cat_new_heading, local_moodesk {{/str}}
+        </a>
+      </div>
+    </div>
+  </div>
+  {{/hascategories}}
+
+</div>

@@ -1,0 +1,273 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/kb_articles
+
+    Knowledge base — the articles management list.
+
+    The product's table (components/_datatable.scss) below the product's
+    toolbar (layout/_table-toolbar.scss, layout/_filters.scss). Two row
+    actions, so the row becomes a card below 992px — the product-wide rule,
+    applied by modules/_kb.scss.
+
+    No entity cell: an article is content, not a thing with a face. Its title
+    is `.mhd-cell--name`, the pattern's way of titling a configuration row, and
+    the "Agents only" pill sits beside it because it is true of some rows and
+    is the one thing about an article a reader cannot infer from its status.
+
+    Two empty states, deliberately distinct: nothing has been written yet
+    (offer to write), or nothing matches these filters (offer to clear them).
+    The first one sending a writer to "clear filters" would be nonsense; the
+    second one saying "write your first article" would be a lie.
+
+    Context variables:
+      * pageheader           - page_header context
+      * articles[]           - {id, title, agentsonly, agentsonlylabel, hascategory, categoryname,
+                               langname, htmllang ("" otherwise),
+                               statuslabel, statusvariant, timemodified, haseditor, editorname,
+                               viewurl, editurl}
+      * hasarticles          - True when the page has rows
+      * hasfilters           - True when a status or category filter is active
+      * showtoolbar          - True when there is anything to filter (rows, or active filters)
+      * listurl              - This page without parameters
+      * newurl               - The create page
+      * statusoptions[]      - {value, label, selected}
+      * categoryoptions[]    - {value, label, selected}
+      * categorynoneselected - True when "Uncategorised" is the active category filter
+      * multilingual         - True when the language column and filter are shown (KB-06)
+      * langoptions[]        - {value, label, htmllang, selected}
+      * total                - Matching articles before pagination
+      * shown                - Rows on this page
+      * paginationbar        - Rendered core paging bar, or ""
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Articles",
+        "description": "Answers to the questions your desk hears again and again.",
+        "meta": null,
+        "actions": [],
+        "primaryaction": {
+          "label": "New article",
+          "url": "/local/moodesk/kb_article_edit.php",
+          "hasurl": true,
+          "hasform": false,
+          "icon": "plus",
+          "hasicon": true,
+          "icononly": true,
+          "variant": "filled",
+          "attributes": [],
+          "hasattributes": false
+        },
+        "hasactions": true
+      },
+      "hasarticles": true,
+      "hasfilters": false,
+      "showtoolbar": true,
+      "listurl": "/local/moodesk/kb_articles.php",
+      "newurl": "/local/moodesk/kb_article_edit.php",
+      "statusoptions": [{"value": "draft", "label": "Draft", "selected": false}],
+      "categoryoptions": [{"value": "3", "label": "Access", "selected": false}],
+      "categorynoneselected": false,
+      "multilingual": true,
+      "langoptions": [{"value": "en", "label": "English", "htmllang": "en", "selected": false}],
+      "total": 1,
+      "shown": 1,
+      "paginationbar": "",
+      "articles": [
+        {
+          "id": 7,
+          "title": "How to reset your password",
+          "agentsonly": false,
+          "agentsonlylabel": "Agents only",
+          "hascategory": true,
+          "categoryname": "Access",
+          "langname": "English",
+          "htmllang": "en",
+          "statuslabel": "Published",
+          "statusvariant": "success",
+          "timemodified": "12 Sep 2026, 10:42",
+          "haseditor": true,
+          "editorname": "Alba Agente",
+          "viewurl": "/local/moodesk/kb_article.php?id=7",
+          "editurl": "/local/moodesk/kb_article_edit.php?id=7"
+        }
+      ]
+    }
+}}
+<div class="mhd-kb-articles">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! The toolbar renders whenever there is something to filter — including
+      when the current filters match nothing, because that is exactly when the
+      user needs the controls to change them. It is absent only on a knowledge
+      base with no articles at all. }}
+  {{#showtoolbar}}
+  <div class="mhd-table-toolbar">
+    <form method="get" action="{{listurl}}" class="mhd-table-toolbar__filters">
+
+      <div class="mhd-filter-select">
+        <select name="status" aria-label="{{#str}} kb_col_status, local_moodesk {{/str}}">
+          <option value="">{{#str}} kb_filter_all_status, local_moodesk {{/str}}</option>
+          {{#statusoptions}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/statusoptions}}
+        </select>
+      </div>
+
+      <div class="mhd-filter-select">
+        <select name="category" aria-label="{{#str}} kb_col_category, local_moodesk {{/str}}">
+          <option value="">{{#str}} kb_filter_all_categories, local_moodesk {{/str}}</option>
+          <option value="none" {{#categorynoneselected}}selected{{/categorynoneselected}}>{{#str}} kb_category_none, local_moodesk {{/str}}</option>
+          {{#categoryoptions}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/categoryoptions}}
+        </select>
+      </div>
+
+      {{#multilingual}}
+      <div class="mhd-filter-select">
+        <select name="language" aria-label="{{#str}} kb_field_lang, local_moodesk {{/str}}">
+          <option value="">{{#str}} kb_filter_all_langs, local_moodesk {{/str}}</option>
+          {{#langoptions}}<option value="{{value}}" lang="{{htmllang}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/langoptions}}
+        </select>
+      </div>
+      {{/multilingual}}
+
+      <div class="mhd-filter-apply">
+        {{! Applying a filter is not the page's primary action — writing an
+            article is — so this is outlined, and clearing is the quieter of the pair. }}
+        <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">{{#str}} kb_filter_apply, local_moodesk {{/str}}</button>
+        {{#hasfilters}}
+        <a href="{{listurl}}" class="mhd-btn mhd-btn--text mhd-btn--xsmall">{{#str}} kb_filter_clear, local_moodesk {{/str}}</a>
+        {{/hasfilters}}
+      </div>
+    </form>
+  </div>
+  {{/showtoolbar}}
+
+  {{#hasarticles}}
+  <p class="text-muted small mb-2">{{#str}} kb_articles_count, local_moodesk, {"shown": {{shown}}, "total": {{total}}} {{/str}}</p>
+
+  <div class="mhd-datatable-surface">
+    <div class="mhd-datatable-scroll">
+    <table class="mhd-datatable table-reboot">
+      <caption class="mhd-sr-only">{{#str}} kb_articles_heading, local_moodesk {{/str}}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{#str}} kb_col_title, local_moodesk {{/str}}</th>
+          {{#multilingual}}<th scope="col">{{#str}} kb_field_lang, local_moodesk {{/str}}</th>{{/multilingual}}
+          <th scope="col">{{#str}} kb_col_category, local_moodesk {{/str}}</th>
+          <th scope="col">{{#str}} kb_col_status, local_moodesk {{/str}}</th>
+          <th scope="col">{{#str}} kb_col_updated, local_moodesk {{/str}}</th>
+          <th scope="col"><span class="mhd-sr-only">{{#str}} actions, local_moodesk {{/str}}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#articles}}
+        <tr>
+          {{! Plain text on purpose, like every other list in the product — the
+              row's View and Edit buttons own navigation. The audience marker
+              sits beside the title rather than in a column of its own: it is
+              true of some rows, and outlined so it informs without competing
+              with the status pill. }}
+          <th scope="row" class="mhd-cell--name">
+            {{title}}
+            {{#agentsonly}}
+            <span class="mhd-pill mhd-pill--outline ml-1">{{agentsonlylabel}}</span>
+            {{/agentsonly}}
+          </th>
+          {{#multilingual}}
+          <td class="mhd-cell-pair mhd-cell-pair--inline">
+            <span class="mhd-cell-label">{{#str}} kb_field_lang, local_moodesk {{/str}}</span>
+            <span lang="{{htmllang}}">{{langname}}</span>
+          </td>
+          {{/multilingual}}
+          <td class="mhd-cell-pair mhd-cell-pair--inline{{^hascategory}} mhd-cell--empty{{/hascategory}}">
+            <span class="mhd-cell-label">{{#str}} kb_col_category, local_moodesk {{/str}}</span>
+            {{#hascategory}}{{categoryname}}{{/hascategory}}
+            {{^hascategory}}<span class="text-muted">{{#str}} kb_category_none, local_moodesk {{/str}}</span>{{/hascategory}}
+          </td>
+          <td class="mhd-cell--status">
+            <span class="mhd-pill mhd-pill--{{statusvariant}}">{{statuslabel}}</span>
+          </td>
+          <td class="mhd-cell-pair mhd-cell-pair--inline mhd-kb-articles__updated">
+            <span class="mhd-cell-label">{{#str}} kb_col_updated, local_moodesk {{/str}}</span>
+            <span>{{timemodified}}</span>
+            {{#haseditor}}<span class="text-muted mhd-kb-articles__editor">{{#str}} kb_updated_by, local_moodesk, {{editorname}} {{/str}}</span>{{/haseditor}}
+          </td>
+          <td class="mhd-cell--actions">
+            <div class="mhd-action-group">
+              <a href="{{viewurl}}" class="mhd-btn mhd-btn--outlined mhd-btn--icon"
+                 aria-label="{{#str}} kb_view_article, local_moodesk {{/str}}"
+                 title="{{#str}} kb_view_article, local_moodesk {{/str}}">
+                <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+                  <use href="#mhd-icon-view"></use>
+                </svg>
+              </a>
+              <a href="{{editurl}}" class="mhd-btn mhd-btn--outlined mhd-btn--icon"
+                 aria-label="{{#str}} kb_edit_heading, local_moodesk {{/str}}"
+                 title="{{#str}} kb_edit_heading, local_moodesk {{/str}}">
+                <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+                  <use href="#mhd-icon-edit"></use>
+                </svg>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {{/articles}}
+      </tbody>
+    </table>
+    </div>
+    {{#paginationbar}}
+    <div class="mhd-datatable-pagination">{{{paginationbar}}}</div>
+    {{/paginationbar}}
+  </div>
+  {{/hasarticles}}
+
+  {{^hasarticles}}
+  <div class="mhd-datatable-surface">
+    <div class="mhd-datatable-empty">
+      {{#hasfilters}}
+      {{! Nothing matches. The knowledge base is not empty — these filters are. }}
+      <div class="mhd-empty-state">
+        <svg class="mhd-empty-state-icon" aria-hidden="true" focusable="false">
+          <use href="#mhd-icon-kb"></use>
+        </svg>
+        <p class="mhd-empty-state-title">{{#str}} kb_no_results_title, local_moodesk {{/str}}</p>
+        <p class="mhd-empty-state-desc">{{#str}} kb_no_results_desc, local_moodesk {{/str}}</p>
+        <a href="{{listurl}}" class="mhd-btn mhd-btn--outlined">{{#str}} kb_filter_clear, local_moodesk {{/str}}</a>
+      </div>
+      {{/hasfilters}}
+      {{^hasfilters}}
+      {{! Nothing has been written yet. }}
+      <div class="mhd-empty-state">
+        <svg class="mhd-empty-state-icon" aria-hidden="true" focusable="false">
+          <use href="#mhd-icon-kb"></use>
+        </svg>
+        <p class="mhd-empty-state-title">{{#str}} kb_no_articles_title, local_moodesk {{/str}}</p>
+        <p class="mhd-empty-state-desc">{{#str}} kb_no_articles_desc, local_moodesk {{/str}}</p>
+        <a href="{{newurl}}" class="mhd-btn mhd-btn--filled">
+          <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+            <use href="#mhd-icon-plus"></use>
+          </svg>
+          {{#str}} kb_new_heading, local_moodesk {{/str}}
+        </a>
+      </div>
+      {{/hasfilters}}
+    </div>
+  </div>
+  {{/hasarticles}}
+
+</div>

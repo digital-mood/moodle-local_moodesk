@@ -1,0 +1,174 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/admin_agent_add
+
+    Onboard an agent (Agent Management A2) — search a Moodle user and grant them
+    agent status. Starter tier.
+
+    Context variables:
+      * formurl        - This page's URL (search GET + grant POST target)
+      * search         - Current search term
+      * searched       - True when a (non-empty) search was submitted
+      * candidates[]   - Matching non-agent users: {id, fullname, email, avatar}
+      * hascandidates  - True when at least one candidate matched
+      * sesskey        - Session key for the grant POST
+      * atlimit        - True when the site is at its agent capacity and grants are refused
+      * limitnotice    - The localised "limit reached" text (only when atlimit)
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Add agent",
+        "description": "Search an existing Moodle user and grant them agent access.",
+        "meta": null,
+        "actions": [
+          {
+            "label": "Back to agents",
+            "url": "/local/moodesk/agents.php",
+            "hasurl": true,
+            "icon": null,
+            "hasicon": false,
+            "icononly": false,
+            "variant": "outlined",
+            "attributes": [],
+            "hasattributes": false
+          }
+        ],
+        "primaryaction": null,
+        "hasactions": true
+      },
+      "formurl": "/local/moodesk/add_agent.php",
+      "search": "lopez",
+      "searched": true,
+      "hascandidates": true,
+      "sesskey": "abc123",
+      "atlimit": true,
+      "limitnotice": "This site has 2 of 2 agents allowed on Starter.",
+      "candidates": [
+        { "id": 7, "fullname": "Martin Lopez", "email": "martin.lopez@example.com" }
+      ]
+    }
+}}
+<div class="mhd-admin-agent-add">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! The cap, said before the search rather than after the click: an operator
+      who has to remove someone first should not have to pick a person to
+      find that out. }}
+  {{#atlimit}}
+  <div class="alert alert-warning mhd-agents-limit-notice" role="status">
+    {{limitnotice}}
+  </div>
+  {{/atlimit}}
+
+  {{! The product's toolbar band and the product's search field, the same pair
+      the Agents directory uses. Not an input group: a corner-full button welded
+      to the square end of a text field reads as a rendering fault. Searching is
+      the means here, not the end — granting the role is — so it is outlined. }}
+  <form method="get" action="{{formurl}}" class="mhd-table-toolbar">
+    <div class="mhd-table-toolbar__filters">
+      <div class="mhd-filter-search">
+        <svg class="mhd-filter-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="5.5" cy="5.5" r="4" stroke="#adb5bd" stroke-width="1.5"/>
+          <path d="M9 9L12 12" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input type="text" name="search" value="{{search}}" class="mhd-filter-search-input"
+               placeholder="{{#str}} agents_add_search_placeholder, local_moodesk {{/str}}"
+               aria-label="{{#str}} agents_add_search_placeholder, local_moodesk {{/str}}" autofocus>
+      </div>
+      <div class="mhd-filter-apply">
+        <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">{{#str}} agents_add_search_button, local_moodesk {{/str}}</button>
+      </div>
+    </div>
+  </form>
+
+  {{#hascandidates}}
+  <div class="mhd-datatable-surface">
+    <table class="mhd-datatable table-reboot">
+      <caption class="mhd-sr-only">{{#str}} agents_add_heading, local_moodesk {{/str}}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{#str}} agents_col_agent, local_moodesk {{/str}}</th>
+          <th scope="col"><span class="mhd-sr-only">{{#str}} actions, local_moodesk {{/str}}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#candidates}}
+        <tr>
+          {{! The same entity cell the Agents directory uses — a candidate is a
+              person, and this is the screen where you decide whether you
+              recognise them. The email is the fact that tells two people with
+              the same name apart, so it is the cell's secondary line. }}
+          <th scope="row" class="mhd-cell--entity">
+            <span class="mhd-entity">
+              <span class="mhd-entity__avatar">{{{avatar}}}</span>
+              <span class="mhd-entity__body">
+                <span class="mhd-entity__name">{{fullname}}</span>
+                <span class="mhd-entity__meta">{{email}}</span>
+              </span>
+            </span>
+          </th>
+          <td class="mhd-cell--actions">
+            <div class="mhd-action-group">
+              <form method="post" action="{{formurl}}">
+                <input type="hidden" name="action"  value="grant">
+                <input type="hidden" name="userid"  value="{{id}}">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                {{! A LABELLED BUTTON, deliberately, where every other migrated
+                    table uses icons. Icons earn their place when a row repeats
+                    the same three or four verbs and the eye learns them by
+                    position. This row has one action, it is the only reason the
+                    screen exists, and "grant the agent role" has no glyph
+                    anybody would read correctly. Filled, because an affirmative
+                    action gains from the emphasis where a destructive one would
+                    turn the table into an alarm. }}
+                <button type="submit" class="mhd-btn mhd-btn--filled mhd-btn--xsmall"{{#atlimit}} disabled{{/atlimit}}>
+                  {{#str}} agents_add_grant, local_moodesk {{/str}}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {{/candidates}}
+      </tbody>
+    </table>
+  </div>
+  {{/hascandidates}}
+
+  {{^hascandidates}}
+  <div class="mhd-datatable-surface">
+    <div class="mhd-datatable-empty">
+      <div class="mhd-empty-state">
+        <svg class="mhd-empty-state-icon" aria-hidden="true" focusable="false">
+          <use href="#mhd-icon-users"></use>
+        </svg>
+        {{! Two different nothings: a search that found no one, and a page
+            waiting to be searched. }}
+        {{#searched}}
+        <p class="mhd-empty-state-desc mb-0">{{#str}} agents_add_no_results, local_moodesk {{/str}}</p>
+        {{/searched}}
+        {{^searched}}
+        <p class="mhd-empty-state-desc mb-0">{{#str}} agents_add_prompt, local_moodesk {{/str}}</p>
+        {{/searched}}
+      </div>
+    </div>
+  </div>
+  {{/hascandidates}}
+
+</div>

@@ -1,0 +1,24 @@
+// =============================================================================
+// layout/_sidebar.scss
+// Sidebar layout — structural positioning only.
+// Used by ticket detail page (Bootstrap col-md-4 aside with control cards).
+// Colour and component styles for sidebar cards live in modules/_ticket-detail.scss.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/breakpoints' as bp;
+
+// Sticky sidebar — keeps the control panel visible as the thread scrolls.
+// Only activates on desktop where there is enough vertical space.
+.mhd-sidebar {
+  @include bp.mhd-respond-to('desktop') {
+    position: sticky;
+    top: v.$mhd-space-lg;
+    align-self: flex-start;
+  }
+}
+
+// Sidebar section spacing — consistent gap between stacked control cards.
+.mhd-sidebar-section + .mhd-sidebar-section {
+  margin-top: v.$mhd-space-sm;
+}

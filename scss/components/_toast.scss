@@ -1,0 +1,87 @@
+// =============================================================================
+// components/_toast.scss
+//
+// Transient confirmations for the application shell.
+//
+// The shell runs on Moodle's 'embedded' layout, which renders no notification
+// region, so this is also where messages queued by a redirect surface. Bottom
+// centre, above everything, and never in the way of the composer: the toast
+// carries confirmations, never anything the user has to act on.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/zindex' as z;
+
+.mhd-toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: var(--mhd-space-lg, 24px);
+  z-index: z.$mhd-z-toast;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mhd-space-sm, 8px);
+  transform: translateX(-50%);
+  // The region is always in the DOM so screen readers can watch it; it must
+  // never intercept a click meant for the screen underneath.
+  pointer-events: none;
+}
+
+.mhd-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(90vw, 420px);
+  padding: 12px var(--mhd-space-md, 16px);
+  border-radius: var(--mhd-radius-lg, 10px);
+  background: #1f2937;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-size: var(--mhd-font-size-sm, 0.8125rem);
+  font-weight: var(--mhd-font-weight-medium, 500);
+  pointer-events: auto;
+  animation: mhd-toast-in 0.18s ease;
+
+  &__icon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    color: #4ade80;
+  }
+
+  &__message {
+    overflow-wrap: anywhere;
+  }
+
+  &--error {
+    background: var(--mhd-color-danger, #dc3545);
+  }
+
+  &--warning {
+    background: var(--mhd-sla-warning, #ffc107);
+    color: #212529;
+  }
+
+  &.is-leaving {
+    opacity: 0;
+    transition: opacity v.$mhd-transition-fast;
+  }
+}
+
+@keyframes mhd-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mhd-toast {
+    animation: none;
+  }
+}

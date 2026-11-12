@@ -1,0 +1,40 @@
+// =============================================================================
+// utilities/_text.scss
+// Text utility classes.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+// Muted text — secondary information, metadata, placeholder values.
+// Used across multiple modules; defined here as a shared utility.
+.mhd-text-muted {
+  color: #adb5bd;
+}
+
+// Small text — captions, labels, helper text.
+.mhd-text-sm {
+  font-size: v.$mhd-font-size-sm;
+}
+
+// Extra small text — timestamps, IDs, secondary labels.
+.mhd-text-xs {
+  font-size: v.$mhd-font-size-xs;
+}
+
+// Italic text — used for empty/placeholder values (e.g. Unassigned).
+.mhd-text-italic {
+  font-style: italic;
+}
+
+// Screen-reader only — hide visually, keep accessible.
+.mhd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,266 @@
+// =============================================================================
+// components/_datatable-cards.scss
+// The card form of a data table, as a mixin and nothing else.
+//
+// Apart from components/_datatable.scss so that it can be used without emitting
+// the table's CSS: Sass emits a module's rules once per compilation, and
+// local_moodeskpro compiles its own stylesheet. The reasoning for the card itself
+// is in components/_datatable.scss.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors'    as c;
+@use '../abstracts/mixins'    as m;
+@use 'entity-card'            as ec;
+
+@mixin mhd-datatable-as-cards {
+  // Each row carries the border and the rounding now. A second frame around the
+  // stack would draw every line twice.
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+
+  // Plain selectors throughout, on purpose. The base rules these replace are
+  // written with `:where()` and weigh nothing, so this wins wherever it is
+  // included — and a module's own rules, written after the `@include`, win over
+  // this. Source order decides, which is the argument that should.
+  .mhd-datatable {
+    display: block;
+  }
+
+  // The column names travel into the cells, so the header row would only repeat
+  // them — but it stays readable for anyone navigating the table.
+  thead {
+    @include m.mhd-sr-only;
+  }
+
+  tbody {
+    display: block;
+  }
+
+  tr {
+    display: block;
+    padding: v.$mhd-space-md;
+    border: 1px solid c.$mhd-color-border;
+    border-radius: v.$mhd-radius-lg;
+    background: c.$mhd-color-surface;
+
+    & + tr {
+      margin-top: v.$mhd-space-sm;
+    }
+
+    // A card is not a row of a grid: there is nothing to follow across it, so
+    // the tint that helps on desktop is just noise here. Selection still reads,
+    // because that is a state the user put the card in.
+    &:hover,
+    &:focus-within {
+      background: c.$mhd-color-surface;
+    }
+
+    &.is-selected {
+      background: c.$mhd-color-row-selected;
+    }
+  }
+
+  th,
+  td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+    // A column that was one line wide has a whole card to wrap in now.
+    white-space: normal;
+  }
+
+  // ── The card's layout ────────────────────────────────────────────────────
+  // The shape every card in the product has, declared once.
+  //
+  //   [figure] Name                                    [ status ]
+  //            metadata
+  //            metadata
+  //   ──────────────────────────────────────────────────────────
+  //            [actions]
+  //
+  // Two columns. The name takes the first, the status takes the second, and
+  // EVERY OTHER CELL spans both and falls into the rows below in the order the
+  // markup lists them. That last part is what makes this reusable: a module
+  // does not have to assign a `grid-row` per cell, so a table that gains a
+  // column does not need its card layout rewritten to match.
+  //
+  // A module overrides from here — Agents pairs two of its metadata cells onto
+  // one line — by writing its own rules after the `@include`, which is the only
+  // thing that decides between two selectors of equal weight.
+  tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: v.$mhd-space-sm;
+    row-gap: v.$mhd-space-xs;
+  }
+
+  th,
+  td {
+    grid-column: 1 / -1;
+  }
+
+  .mhd-cell--entity,
+  .mhd-cell--name {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mhd-cell--status {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  // Metadata lines up under the NAME, not under the figure, so the card reads
+  // as one block hanging off its title rather than as a list that happens to
+  // start beside a circle. The indent is the figure plus its gap, named once in
+  // abstracts/_variables.scss.
+  //
+  // Applied through the sibling combinator so it costs nothing to opt out of: a
+  // table whose rows are named by `.mhd-cell--name` — a category, a webhook —
+  // has no figure, so nothing indents. Status and actions are excluded because
+  // neither is metadata: one sits on the title line, the other below the rule.
+  //
+  // `:not()` with a single class rather than `:has()`: the plugin supports
+  // Moodle 4.5, and not all of its users are on a browser that ships `:has()`.
+  // The element and the exclusions are inside `:where()` so they add nothing:
+  // what is left weighing anything is the one class, which is the least this
+  // can weigh and still beat the `padding: 0` above it. A module that wants a
+  // particular cell flush — Departments puts its SLA marker at the card's right
+  // edge, where there is nothing to align under — then simply says so.
+  .mhd-cell--entity ~ :where(th, td):not(:where(.mhd-cell--status, .mhd-cell--actions)) {
+    padding-left: v.$mhd-entity-indent;
+  }
+
+  // ── The row's name, as the card's title ──────────────────────────────────
+  // Two roles, because a row is named in one of two ways and both end up as the
+  // heading of a card.
+  //
+  //   .mhd-cell--entity   a thing with an identity — an agent, a department, a
+  //                       team. The entity cell draws it; this is where that
+  //                       cell is told it now has a card's width to work with.
+  //   .mhd-cell--name     a name with no identity behind it — a category, a
+  //                       custom field, a webhook. Configuration, not an
+  //                       entity, so no figure and no portrait frame: just the
+  //                       weight a title needs.
+  //
+  // Declared once here rather than in each module, because sixteen modules each
+  // restating "this is the card's title" is exactly how two screens end up
+  // titling their cards differently.
+  .mhd-cell--entity .mhd-entity {
+    @include ec.mhd-entity-card;
+  }
+
+  .mhd-cell--name {
+    font-size: v.$mhd-font-size-md;
+    font-weight: v.$mhd-font-weight-semibold;
+    line-height: v.$mhd-line-height-tight;
+    // A name with no spaces in it is still a name; it wraps rather than
+    // widening the card past the viewport.
+    overflow-wrap: anywhere;
+  }
+
+  // A URL or a scope list truncates in a column because the column has to keep
+  // its shape. A card has no column, and checking exactly that string is
+  // usually why somebody opened the screen on a phone — so it wraps instead.
+  .mhd-cell--code {
+    max-width: none;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+
+    // The theme's own `code` rule outranks what it would inherit — see the
+    // key/value block above for the measurement.
+    code {
+      overflow-wrap: anywhere;
+    }
+  }
+
+  // Right-alignment earns its place in a table cell and loses it in a card:
+  // here every value starts at the same left edge as the one above it.
+  .mhd-cell--actions,
+  .mhd-cell--numeric {
+    width: auto;
+    text-align: left;
+  }
+
+  // The actions are the card's footer: separated from the information above by
+  // a rule, laid out from the left, and free to wrap onto a second line rather
+  // than overflow the card.
+  .mhd-cell--actions {
+    margin-top: v.$mhd-space-sm;
+    padding-top: v.$mhd-space-sm;
+    border-top: 1px solid c.$mhd-color-border;
+  }
+
+  .mhd-action-group {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    // A finger needs more room between targets than a pointer does. The buttons
+    // themselves grow their hit area on a coarse pointer (components/_button
+    // .scss); this is the gap between them.
+    gap: v.$mhd-space-sm;
+  }
+
+  // A labelled cell reads as a pair: name on the left, value on the right.
+  // Marked with a class rather than matched with `:has()` — the plugin supports
+  // Moodle 4.5, whose users are not all on a browser that ships it. Cells
+  // without the class are laid out by the module that owns them; an action row
+  // has no name worth printing.
+  .mhd-cell-pair {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: v.$mhd-space-sm;
+    padding: 2px 0;
+    // A value too long for what is left of the line drops to the next one whole
+    // rather than pushing the label off the card. Long machine values break
+    // inside themselves as well — see the `overflow-wrap` on .mhd-cell--code.
+    flex-wrap: wrap;
+  }
+
+  // The pair spread across a full-width cell reads as a row of a table, which
+  // is the one thing this layout is not. Where the card puts several of these
+  // on one line as metadata — "Members 5 · SLA Custom" — the label and its
+  // value belong together instead, and the line does the separating.
+  .mhd-cell-pair--inline {
+    justify-content: flex-start;
+    gap: v.$mhd-space-xs;
+  }
+
+  .mhd-cell-label {
+    display: inline;
+    flex: 0 0 auto;
+    font-size: v.$mhd-font-size-xs;
+    color: c.$mhd-color-text-muted;
+    // In card form the label is not a column heading any more, it is the name
+    // half of a "name: value" pair, and it carries the weight that says so.
+    font-weight: v.$mhd-font-weight-bold;
+
+    // The colon belongs to this presentation and to nothing else. Putting it in
+    // the language string would follow the same string up into the desktop
+    // header row, where a column is called "Endpoint URL" and not "Endpoint
+    // URL:". Generated content is the right tool precisely because it is
+    // punctuation rather than content: it never reaches the string files, and
+    // it disappears on its own wherever the rule below hides the label.
+    &::after {
+      content: ':';
+    }
+  }
+
+  // A cell with nothing in it earns a place in a table, where the column has to
+  // keep its shape and an em dash says "asked, and the answer is no". In a card
+  // there is no column to hold open, so the same em dash is a whole line spent
+  // saying nothing — and four of those is what turns a card into a form.
+  //
+  // The markup stays one markup: the cell is always rendered, and marked when
+  // its value is absent.
+  .mhd-cell--empty {
+    display: none;
+  }
+}

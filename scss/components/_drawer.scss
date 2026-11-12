@@ -1,0 +1,433 @@
+// =============================================================================
+// components/_drawer.scss
+//
+// New-ticket drawer: right-anchored overlay panel hosting the ticket submission
+// form on the list and dashboard screens.
+//
+// The form inside is Moodle's own moodleform markup, rendered verbatim and
+// RESTYLED here (ADR §4 — never replaced), so validation, CSRF, draft areas and
+// the success redirect stay untouched. Everything is scoped under
+// `.mhd-ticket-drawer`, so submit.php's standalone form card and the reply form
+// are unaffected — the drawer owns none of the shared form styling.
+//
+// Selectors that reach into Moodle internals (`.fitem`, `#fgroup_id_buttonar`,
+// `.form-label-addon`, the editor and the filemanager) are best-effort across
+// Moodle 4.5–5.2 and every one of them degrades to the stock look rather than
+// to a broken layout.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/breakpoints' as bp;
+@use 'drawer-base' as drawer;
+@use 'moodleform' as mf;
+
+// Height reserved for the pinned action bar (see "Action bar" below): the
+// buttons inside 16px of vertical padding, measured in the browser. The body's
+// bottom padding adds a further space unit on top, so the last field still
+// clears the bar if a theme makes the buttons slightly taller.
+$drawer-footer-height: 84px;
+
+// Below this the panel is full-bleed and narrow enough that the Category +
+// Department pair drops to ~163px a side, so it collapses to one column. The
+// threshold is the panel's own width, which equals the viewport once the panel
+// is full-bleed — hence a plain media query rather than a shell breakpoint.
+$drawer-single-column-max: 400px;
+
+// Chevron for the restyled selects — matches the shell's filter controls.
+$drawer-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23adb5bd' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+
+// ── Trigger ──────────────────────────────────────────────────────────────────
+// A plain link to submit.php that ticket_drawer.js upgrades into the drawer
+// trigger, found by its data-action rather than by a class. It is the Button
+// component in the filled variant and needs nothing from this file: the icon
+// slot it used to style by hand is `.mhd-btn__icon`, sized by the button.
+
+// ── Mount, backdrop and panel ────────────────────────────────────────────────
+
+.mhd-ticket-drawer-mount {
+  @include drawer.mhd-drawer-mount;
+}
+
+.mhd-ticket-drawer__backdrop {
+  @include drawer.mhd-drawer-backdrop;
+}
+
+.mhd-ticket-drawer {
+  @include drawer.mhd-drawer-panel(
+    var(--mhd-drawer-width, 520px),
+    var(--mhd-color-surface, #fff)
+  );
+}
+
+.mhd-ticket-drawer-mount.is-open {
+  .mhd-ticket-drawer__backdrop {
+    opacity: 1;
+  }
+
+  .mhd-ticket-drawer {
+    transform: translateX(0);
+  }
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+
+.mhd-ticket-drawer__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mhd-space-md, 16px);
+  padding: var(--mhd-space-md, 16px) var(--mhd-space-lg, 24px);
+  border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+}
+
+.mhd-ticket-drawer__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mhd-ticket-drawer__title {
+  margin: 0 0 2px;
+  font-size: var(--mhd-font-size-lg, 1.125rem);
+  font-weight: var(--mhd-font-weight-bold, 700);
+  line-height: var(--mhd-line-height-tight, 1.25);
+  color: var(--mhd-color-text, #1f2937);
+}
+
+.mhd-ticket-drawer__subtitle {
+  margin: 0;
+  font-size: var(--mhd-font-size-sm, 0.8125rem);
+  color: var(--mhd-color-text-muted, #6b7280);
+}
+
+.mhd-ticket-drawer__close {
+  @include drawer.mhd-drawer-close;
+
+  &-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// ── Body ─────────────────────────────────────────────────────────────────────
+// The only scroll region: the header stays put and the form's action bar is
+// pinned to the panel's bottom edge (see "Action bar").
+
+.mhd-ticket-drawer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mhd-space-lg, 24px);
+  padding-bottom: calc(#{$drawer-footer-height} + var(--mhd-space-lg, 24px));
+}
+
+// =============================================================================
+// moodleform inside the drawer
+//
+// Scoped under `.moodesk-app .mhd-ticket-drawer` so it outranks the shared
+// `.moodesk-app .mform` rules in components/_forms-controls.scss without
+// touching them.
+// =============================================================================
+
+.moodesk-app .mhd-ticket-drawer {
+
+  // The card frame is the drawer itself — drop Moodle's fieldset chrome. The
+  // legends stay untouched: every one moodleform emits here is .visually-hidden
+  // and is the group's accessible name.
+  @include mf.mhd-moodleform-reset;
+
+  // Custom-field section → quiet divider subheading, matching the standalone
+  // form page. The visible title is an <h3> next to the collapse toggle.
+  .mform > fieldset.collapsible {
+    margin-top: var(--mhd-space-md, 16px);
+    padding-top: var(--mhd-space-md, 16px);
+    border-top: 1px solid var(--mhd-color-border, #e5e7eb);
+  }
+
+  .mform > fieldset h3 {
+    font-size: var(--mhd-font-size-md, 0.9375rem);
+    font-weight: var(--mhd-font-weight-semibold, 600);
+    color: var(--mhd-color-text, #1f2937);
+  }
+
+  // ── Vertical rhythm: label on top, control full width ──
+  // The shared reset, at the drawer's own label size. See
+  // components/_moodleform.scss for what it undoes and why.
+  @include mf.mhd-moodleform-stacked(var(--mhd-font-size-sm, 0.8125rem));
+
+  // Required marker: the design shows a red asterisk, Moodle ships a
+  // "exclamation circle" icon. Swap the glyph, keep Moodle's own title/ARIA.
+  .form-label-addon .text-danger .icon {
+    display: none;
+  }
+
+  .form-label-addon .text-danger::after {
+    content: "*";
+    color: var(--mhd-color-danger, #dc3545);
+    font-weight: var(--mhd-font-weight-semibold, 600);
+  }
+
+  // ── Controls ──
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="number"],
+  select,
+  .form-control {
+    width: 100%;
+    max-width: 100%;
+    height: 40px;
+    padding: 0 var(--mhd-space-sm, 8px) 0 12px;
+    font-size: var(--mhd-font-size-md, 0.9375rem);
+    border: 1px solid var(--mhd-color-border-strong, #d1d5db);
+    border-radius: var(--mhd-radius-md, 6px);
+    background: var(--mhd-color-surface, #fff);
+    color: var(--mhd-color-text, #1f2937);
+  }
+
+  // Height stays with the field: only the description gets the design's tall
+  // writing area, custom-field textareas keep their own `rows`.
+  textarea,
+  textarea.form-control {
+    height: auto;
+    padding: 12px;
+    resize: vertical;
+  }
+
+  select {
+    padding-right: 28px;
+    appearance: none;
+    background-image: $drawer-select-chevron;
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus,
+  .form-control:focus {
+    border-color: var(--mhd-color-primary, #2563eb);
+    outline: 2px solid var(--mhd-color-focus, rgba(37, 99, 235, 0.4));
+    outline-offset: 1px;
+  }
+
+  // ── Validation feedback ──
+  // The invalid border survives focus: Moodle focuses the first failed field, so
+  // without this the field the user is asked to fix is the one that stops
+  // looking wrong. The focus ring itself stays the shell's.
+  .is-invalid,
+  .form-control.is-invalid,
+  .is-invalid:focus,
+  .form-control.is-invalid:focus {
+    border-color: var(--mhd-color-danger, #dc3545);
+  }
+
+  .form-control-feedback,
+  .invalid-feedback {
+    margin-top: var(--mhd-space-xs, 4px);
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    color: var(--mhd-color-danger, #dc3545);
+  }
+
+  // ── Category + Department side by side ──
+  // The element container is a grid; every field spans the full row except
+  // these two, and only when BOTH are rendered — either one falls back to a
+  // hidden input (a single category, no active departments), and a lone
+  // half-width select would read as broken.
+  //
+  // Two containers, because moodleform only wraps fields in
+  // fieldset > .fcontainer once the form declares a header: without custom
+  // fields the .fitem elements are direct children of .mform. Making both a
+  // grid covers each case, and a grid holding a single child behaves exactly
+  // like the block it replaces. If :has() or the ids stop matching, the form
+  // simply stays single-column.
+  //
+  // `.fcontainer.show`, not `.fcontainer`: the section container is also
+  // Moodle's collapsible, and Bootstrap hides a collapsed one with
+  // `.collapse:not(.show) { display: none }` at (0,2,0). A `display: grid` on
+  // the bare `.fcontainer` weighs (0,3,0) and beat it in every state — and
+  // source order was never going to help, because the plugin's stylesheet is
+  // concatenated BEFORE the theme's. So the toggle flipped, the chevron turned,
+  // and the fields stayed. Tying the grid to `.show` — which core's
+  // element-header template puts on every section that is not collapsed,
+  // collapsible or not, on 4.5 and 5.x alike — leaves Bootstrap's rule the only
+  // one that matches once the section closes. While the height animates the
+  // container carries `.collapsing` and neither class, and lays out as a plain
+  // block for 350ms, which is what Bootstrap animates anyway.
+  .mform,
+  .fcontainer.show {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: var(--mhd-space-md, 16px);
+    align-content: start;
+  }
+
+  .mform > *,
+  .fcontainer > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .mform:has(> #fitem_id_categoryid):has(> #fitem_id_departmentid),
+  .fcontainer:has(> #fitem_id_categoryid):has(> #fitem_id_departmentid) {
+    > #fitem_id_categoryid,
+    > #fitem_id_departmentid {
+      grid-column: span 1;
+    }
+  }
+
+  // ── Description editor ──
+  // The design's minimal toolbar is a visual reference, not a reduction: the
+  // real Moodle editor keeps every button. Only the frame is restyled so the
+  // toolbar and the writing area read as one control.
+  [data-fieldtype="editor"] .editor_atto_wrap,
+  [data-fieldtype="editor"] .tox-tinymce {
+    border: 1px solid var(--mhd-color-border-strong, #d1d5db);
+    border-radius: var(--mhd-radius-md, 6px);
+    overflow: hidden;
+  }
+
+  [data-fieldtype="editor"] .editor_atto_toolbar,
+  [data-fieldtype="editor"] .tox-editor-header {
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+    border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+  }
+
+  // Covers Atto, TinyMCE and the plain-textarea editor alike.
+  [data-fieldtype="editor"] .editor_atto_content,
+  [data-fieldtype="editor"] .tox-edit-area,
+  [data-fieldtype="editor"] textarea {
+    min-height: 180px;
+  }
+
+  // ── Attachments ──
+  // Moodle's filemanager keeps all of its behaviour, limits and security; only
+  // the frame is pulled towards the design's dropzone.
+  [data-fieldtype="filemanager"] .filemanager {
+    padding: var(--mhd-space-sm, 8px);
+    border: 1px dashed var(--mhd-color-border-strong, #d1d5db);
+    border-radius: var(--mhd-radius-md, 6px);
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+  }
+
+  // Moodle already states the size and file-count limits up front, which is the
+  // hint the design puts under the dropzone. Quiet it down to match, and keep
+  // it inside the dashed frame rather than sitting on its edge.
+  [data-fieldtype="filemanager"] .fp-restrictions {
+    padding-bottom: var(--mhd-space-xs, 4px);
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    color: var(--mhd-color-text-muted, #6b7280);
+    text-align: left;
+  }
+
+  // ── Action bar → pinned drawer footer ──
+  // The buttons stay inside the <form> (they are the real submit/cancel); they
+  // are lifted out of the scroll flow and anchored to the panel instead. The
+  // containing block is the panel itself (the body's overflow does not clip an
+  // absolutely positioned box whose containing block is outside it), so this
+  // reads as a fixed footer without moving any markup.
+  #fgroup_id_buttonar,
+  .fitem[data-groupname="buttonar"] {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0 !important; // .mb-3 would push the bar 16px off the bottom edge.
+    min-height: #{$drawer-footer-height};
+    padding: var(--mhd-space-md, 16px) var(--mhd-space-lg, 24px);
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+    border-top: 1px solid var(--mhd-color-border, #e5e7eb);
+  }
+
+  #fgroup_id_buttonar > .col-form-label,
+  .fitem[data-groupname="buttonar"] > .col-form-label {
+    display: none;
+  }
+
+  #fgroup_id_buttonar > .felement,
+  #fgroup_id_buttonar > [class*="col-md-9"],
+  .fitem[data-groupname="buttonar"] > .felement {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--mhd-space-sm, 8px);
+    margin: 0;
+  }
+
+  // Boost nests each button in its own wrapper inside the group cell; align the
+  // whole chain to the right and drop the per-item bottom margin the shared
+  // .fitem rule above would otherwise add to the buttons.
+  #fgroup_id_buttonar .felement > *,
+  .fitem[data-groupname="buttonar"] .felement > * {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--mhd-space-sm, 8px);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  #fgroup_id_buttonar .fitem,
+  .fitem[data-groupname="buttonar"] .fitem {
+    margin: 0 !important; // Same .mb-3, this time on each button's wrapper.
+  }
+
+  // Space between Create ticket and Cancel.
+  //
+  // The gap above cannot do it: Moodle nests the pair as
+  // `.felement > .w-100 > .d-flex > .fitem + .fitem`, so a gap declared on the
+  // `.w-100` has a single child to space, and the wrappers that are actually
+  // adjacent sit one level further in. This is that level — the only flex
+  // container in the group with two children — so the separation is declared
+  // where the adjacency really is, rather than as a margin on each button.
+  //
+  // The `.fitem` reset immediately above is what makes it visible: with .mb-3
+  // still on the wrappers the buttons were spaced vertically and touching
+  // horizontally. If a future Moodle stops nesting this way the pair falls back
+  // to touching, which is a cosmetic loss, not a broken footer.
+  #fgroup_id_buttonar .felement > * > .d-flex,
+  .fitem[data-groupname="buttonar"] .felement > * > .d-flex {
+    gap: var(--mhd-space-sm, 8px);
+  }
+
+  // The buttons themselves are no longer styled here. Save and Cancel are
+  // moodleform's markup, and vendors/_moodle-buttons.scss now hands them the
+  // same component every other button in the product uses — including the
+  // quiet-secondary treatment Cancel used to get from this block by hand.
+}
+
+// ── Responsive ───────────────────────────────────────────────────────────────
+// Below the mobile breakpoint the panel is full-bleed and the two-column pair
+// collapses: 1fr 1fr is unreadable once the panel is narrower than ~380px.
+
+@media (max-width: #{$drawer-single-column-max}) {
+  .moodesk-app .mhd-ticket-drawer {
+    .mform:has(> #fitem_id_categoryid):has(> #fitem_id_departmentid),
+    .fcontainer:has(> #fitem_id_categoryid):has(> #fitem_id_departmentid) {
+      > #fitem_id_categoryid,
+      > #fitem_id_departmentid {
+        grid-column: 1 / -1;
+      }
+    }
+  }
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-ticket-drawer__header {
+    padding: var(--mhd-space-md, 16px);
+  }
+
+  .mhd-ticket-drawer__body {
+    padding: var(--mhd-space-md, 16px);
+    padding-bottom: calc(#{$drawer-footer-height} + var(--mhd-space-md, 16px));
+  }
+
+  .moodesk-app .mhd-ticket-drawer {
+    #fgroup_id_buttonar,
+    .fitem[data-groupname="buttonar"] {
+      padding: var(--mhd-space-md, 16px);
+    }
+  }
+}

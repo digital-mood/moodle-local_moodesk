@@ -1,0 +1,91 @@
+// =============================================================================
+// components/_drawer-base.scss
+//
+// The panel mechanics every mooDesk drawer shares: how it is hidden, how the
+// backdrop behaves, how the panel is anchored and animated, and what the close
+// button looks like. Nothing about a drawer's *contents* lives here — the
+// new-ticket drawer and the ticket detail drawer differ in width, surface and
+// everything inside, and pretending otherwise would couple two screens that
+// only slide in from the same edge.
+//
+// Deliberately mixins rather than shared class names: each component keeps its
+// own selectors, so a change to one drawer can never reach the other by
+// accident. The duplication in the compiled output is a few dozen bytes.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/zindex' as z;
+
+// The mount is hidden with visibility, never display:none: Moodle's editor and
+// filemanager initialise on page load and need a container that already has its
+// final width. visibility:hidden also keeps the panel out of the tab order.
+@mixin mhd-drawer-mount {
+  visibility: hidden;
+
+  &.is-open {
+    visibility: visible;
+  }
+}
+
+@mixin mhd-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: z.$mhd-z-drawer-backdrop;
+  background: var(--mhd-drawer-backdrop, rgba(15, 23, 42, 0.45));
+  opacity: 0;
+  transition: opacity v.$mhd-transition-fast;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+// $width   Panel width; collapses to the viewport on narrow screens.
+// $surface Panel background.
+@mixin mhd-drawer-panel($width, $surface) {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: z.$mhd-z-drawer;
+  display: flex;
+  flex-direction: column;
+  width: $width;
+  max-width: 100vw;
+  background: $surface;
+  border-left: 1px solid var(--mhd-color-border, #e5e7eb);
+  box-shadow: var(--mhd-shadow-drawer, -8px 0 24px rgba(15, 23, 42, 0.12));
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@mixin mhd-drawer-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mhd-radius-md, 6px);
+  background: transparent;
+  color: var(--mhd-color-text-muted, #6b7280);
+  cursor: pointer;
+
+  &:hover,
+  &:focus {
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+    color: var(--mhd-color-text, #1f2937);
+  }
+}
+
+// Scroll lock while a drawer owns the viewport. One rule for every drawer:
+// the JS only drops the class once the last open panel is closed.
+body.mhd-drawer-locked {
+  overflow: hidden;
+}

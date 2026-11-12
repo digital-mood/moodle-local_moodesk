@@ -1,0 +1,534 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/dashboard
+
+    mooDesk Dashboard — the operational support panel.
+
+    Works without JavaScript: every figure is in the markup, and the bars are
+    pure CSS.
+
+    Five panels carry data-mhd-chart and are upgraded by dashboard_charts.js
+    into a Chart.js rendering — the trend line, the status doughnut, the SLA
+    gauge and the priority and aging pies, being the shapes CSS cannot draw
+    honestly. Their markup is not removed when that happens: the first three
+    move out of sight but stay in the accessibility tree, so the figures remain
+    readable as text, and the two pies keep their list on screen as the legend
+    that names their slices. Every other panel is CSS by design and stays that
+    way.
+
+    Layout follows the reading order an administrator needs: what demands
+    attention now (KPIs), whether the backlog is growing (trend + status), how
+    urgent and how well-served it is (priority + SLA), where the load sits
+    (departments), who is carrying it (workload + aging), what causes it
+    (categories), and what just happened (activity).
+
+    Context variables:
+      * range_days, range_label - Active window
+      * has_any_data            - False when no panel found anything: the panels
+                                  give way to a single empty state, while the
+                                  KPI row stays, because a count of zero is a
+                                  measurement rather than an absence (§8.2)
+      * is_manager, is_requester, has_scope, can_filter
+      * cansubmit, listurl, submiturl, formaction, clearallurl
+      * rangeoptions[]          - {value, label, isselected}
+      * departmentoptions[]     - {id, name, isselected}   (+ hasdepartmentoptions)
+      * pluginpanels[]          - {html} panels plugins add (+ haspluginpanels), hook dashboard_panels
+      * pluginpanelsafterpriority[], pluginpanelsbeforeaging[], pluginpanelsbeforeactivity[]
+                                - {html} plugin panels among the base's own
+      * pluginfilterselects[]   - {name, label, options[{value, label, isselected}]}
+                                  (+ haspluginfilterselects), hook dashboard_filters
+      * agentoptions[]          - {id, fullname, isselected} (+ hasagentoptions)
+      * chips[]                 - {label, dismissurl}      (+ haschips)
+      * hasfilters              - Whether a scope criterion is applied, which is
+                                  not the same as haschips: a chip whose label
+                                  cannot be resolved is dropped while its
+                                  criterion still applies
+      * kpis[]                  - {key, label, css_class, icon, note, has_data,
+                                   display, no_data_label, has_delta, delta_display,
+                                   delta_up, delta_down, delta_label, delta_good,
+                                   delta_bad, delta_note}
+      * trend                   - {has_data, points[{label, sr_label, created_pct,
+                                   resolved_pct}], total_created, total_resolved,
+                                   backlog_delta, backlog_rising, no_data_label}
+      * status, priority        - {has_data, total, rows[], no_data_label}
+      * departments             - {has_data, rows[{label,total,width,segments[]}], legend[]}
+      * aging                   - {has_data, total, rows[]}
+                                   resolved_total, has_target, target, target_label,
+                                   meets_target, breached_label}
+      * activity                - {is_available, has_data, rows[]}
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Dashboard",
+        "description": null,
+        "meta": null,
+        "actions": [
+          {
+            "label": "View all tickets",
+            "url": "/local/moodesk/index.php",
+            "hasurl": true,
+            "icon": null,
+            "hasicon": false,
+            "icononly": false,
+            "variant": "outlined",
+            "attributes": [],
+            "hasattributes": false
+          }
+        ],
+        "primaryaction": {
+          "label": "New ticket",
+          "url": "/local/moodesk/submit.php",
+          "hasurl": true,
+          "icon": "plus",
+          "hasicon": true,
+          "icononly": true,
+          "variant": "filled",
+          "attributes": [
+            {
+              "name": "data-action",
+              "value": "mhd-open-new-ticket"
+            }
+          ],
+          "hasattributes": true
+        },
+        "hasactions": true
+      },
+      "range_days": 30,
+      "range_label": "Last 30 days",
+      "has_any_data": true,
+      "is_manager": true,
+      "can_filter": true,
+      "cansubmit": true,
+      "listurl": "/local/moodesk/index.php",
+      "submiturl": "/local/moodesk/submit.php",
+      "formaction": "/local/moodesk/dashboard.php",
+      "clearallurl": "/local/moodesk/dashboard.php?days=30",
+      "rangeoptions": [{"value": 30, "label": "Last 30 days", "isselected": true}],
+      "hasdepartmentoptions": false,
+      "hasagentoptions": false,
+      "haschips": false,
+      "kpis": [
+        {"key": "active", "label": "Active tickets", "css_class": "mhd-kpi-blue",
+         "icon": "ticket", "note": "Right now", "has_data": true, "display": "25",
+         "has_delta": false}
+      ],
+      "trend": {"has_data": false, "no_data_label": "Not enough data yet"},
+      "status": {"has_data": false, "no_data_label": "Not enough data yet"},
+      "priority": {"has_data": false, "no_data_label": "Not enough data yet"},
+      "departments": {"has_data": false, "no_data_label": "Not enough data yet"},
+      "aging": {"has_data": false, "no_data_label": "Not enough data yet"},
+      "activity": {"has_data": false, "no_data_label": "Not enough data yet"}
+    }
+}}
+<div class="mhd-dashboard mhd-dashboard--app">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! ── Global filters ────────────────────────────────────────────────────────
+      A plain GET form: the whole dashboard state lives in the URL, so it can be
+      bookmarked, shared and reloaded. Selects auto-submit where JS is present;
+      the Apply button is what makes it work where it is not. }}
+  <form class="mhd-filter-bar mhd-dash-filters" method="get" action="{{formaction}}">
+
+    <div class="mhd-filter-select">
+      <label class="mhd-filter-label" for="mhd-dash-range">
+        {{#str}} dashboard_filter_range, local_moodesk {{/str}}
+      </label>
+      <select id="mhd-dash-range" name="days" onchange="this.form.submit()">
+        {{#rangeoptions}}
+        <option value="{{value}}"{{#isselected}} selected{{/isselected}}>{{label}}</option>
+        {{/rangeoptions}}
+      </select>
+    </div>
+
+    {{#can_filter}}
+
+    {{#hasdepartmentoptions}}
+    <div class="mhd-filter-select">
+      <label class="mhd-filter-label" for="mhd-dash-dept">
+        {{#str}} ticket_department, local_moodesk {{/str}}
+      </label>
+      <select id="mhd-dash-dept" name="departmentid" onchange="this.form.submit()">
+        <option value="-1">{{#str}} filter_all_departments, local_moodesk {{/str}}</option>
+        <option value="0">{{#str}} dept_none, local_moodesk {{/str}}</option>
+        {{#departmentoptions}}
+        <option value="{{id}}"{{#isselected}} selected{{/isselected}}>{{name}}</option>
+        {{/departmentoptions}}
+      </select>
+    </div>
+    {{/hasdepartmentoptions}}
+
+    {{! Plugin scope filters (hook dashboard_filters) }}
+    {{#haspluginfilterselects}}
+    {{#pluginfilterselects}}
+    <div class="mhd-filter-select">
+      <label class="mhd-filter-label" for="mhd-dash-plugin-{{name}}">{{label}}</label>
+      <select id="mhd-dash-plugin-{{name}}" name="{{name}}" onchange="this.form.submit()">
+        {{#options}}
+        <option value="{{value}}"{{#isselected}} selected{{/isselected}}>{{label}}</option>
+        {{/options}}
+      </select>
+    </div>
+    {{/pluginfilterselects}}
+    {{/haspluginfilterselects}}
+
+    {{#hasagentoptions}}
+    <div class="mhd-filter-select">
+      <label class="mhd-filter-label" for="mhd-dash-agent">
+        {{#str}} dashboard_filter_agent, local_moodesk {{/str}}
+      </label>
+      <select id="mhd-dash-agent" name="agentid" onchange="this.form.submit()">
+        <option value="-1">{{#str}} filter_all_assignees, local_moodesk {{/str}}</option>
+        <option value="0">{{#str}} unassigned, local_moodesk {{/str}}</option>
+        {{#agentoptions}}
+        <option value="{{id}}"{{#isselected}} selected{{/isselected}}>{{fullname}}</option>
+        {{/agentoptions}}
+      </select>
+    </div>
+    {{/hasagentoptions}}
+
+    {{/can_filter}}
+
+    <div class="mhd-filter-apply">
+      {{! Same call as the ticket list: filtering is not the primary action on
+          the page, so it is outlined and Clear all stays the quieter link. }}
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">
+        {{#str}} filter_apply, local_moodesk {{/str}}
+      </button>
+    </div>
+
+    {{#haschips}}
+    <a href="{{clearallurl}}" class="mhd-filter-clear-all">
+      {{#str}} filter_clear_all, local_moodesk {{/str}}
+    </a>
+    {{/haschips}}
+  </form>
+
+  {{#haschips}}
+  <div class="mhd-filter-chips" role="group" aria-label="{{#str}} dashboard_active_filters, local_moodesk {{/str}}">
+    {{! Same chip as the ticket list, and now literally the same component:
+        components/_pill.scss owns it. The accessible name has to say what
+        following the link does — on its own, "Academic Support" is not an
+        action. }}
+    {{#chips}}
+    <a href="{{dismissurl}}"
+       class="mhd-pill mhd-pill--input mhd-pill--interactive mhd-pill--trailing-icon"
+       aria-label="{{#str}} filter_chip_remove, local_moodesk, {{label}} {{/str}}">
+      <span class="mhd-pill__label">{{label}}</span>
+      <span class="mhd-pill__icon" aria-hidden="true">&times;</span>
+    </a>
+    {{/chips}}
+  </div>
+  {{/haschips}}
+
+  {{! Everything below the filters shares one vertical rhythm, owned by this
+      container rather than by each section's own margin — see the SCSS. }}
+  <div class="mhd-dash-sections">
+
+  {{! ══ Level 1 — KPIs ══════════════════════════════════════════════════════ }}
+  <div class="mhd-kpi-grid">
+    {{#kpis}}
+    <div class="mhd-kpi-card {{css_class}}{{^has_data}} mhd-kpi-card--nodata{{/has_data}}">
+      <span class="mhd-kpi-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><use href="#mhd-icon-{{icon}}"></use></svg>
+      </span>
+      <span class="mhd-kpi-body">
+        <span class="mhd-kpi-label">{{label}}</span>
+        <span class="mhd-kpi-figure">
+          <span class="mhd-kpi-value">{{display}}</span>
+          {{#has_delta}}
+          {{! Direction and polarity are separate: a rise is not automatically
+              good news, so the service decides which of the two colours to use
+              — and neither, when the figure did not move at all.
+
+              The arrow is decorative and the colour says nothing to a screen
+              reader, so delta_label states the direction in words. }}
+          <span class="mhd-kpi-delta{{#delta_good}} mhd-kpi-delta--good{{/delta_good}}{{#delta_bad}} mhd-kpi-delta--bad{{/delta_bad}}">
+            <span aria-hidden="true">{{#delta_up}}&uarr;{{/delta_up}}{{#delta_down}}&darr;{{/delta_down}}</span>
+            <span class="mhd-sr-only">{{delta_label}}</span>
+            {{delta_display}}
+          </span>
+          {{/has_delta}}
+        </span>
+        {{^has_data}}
+        <span class="mhd-kpi-note mhd-kpi-note--nodata">{{no_data_label}}</span>
+        {{/has_data}}
+        {{#has_data}}
+        <span class="mhd-kpi-note">{{#has_delta}}{{delta_note}}{{/has_delta}}{{^has_delta}}{{note}}{{/has_delta}}</span>
+        {{/has_data}}
+      </span>
+    </div>
+    {{/kpis}}
+  </div>
+
+  {{! Every panel below is skipped when nothing was found, in favour of saying
+      it once. The KPI row above stays: a count of zero is a real measurement
+      and worth stating — see docs/dashboard-redesign.md §8.2. }}
+  {{#has_any_data}}
+
+  {{! ══ Level 2 — Tickets over time + Tickets by status ═════════════════════ }}
+
+  <section class="mhd-panel mhd-panel--trend mhd-dash-cell mhd-dash-cell--trend" aria-labelledby="mhd-title-trend">
+    <header class="mhd-panel-head">
+      <h3 class="mhd-panel-title" id="mhd-title-trend">{{#str}} dashboard_section_trend, local_moodesk {{/str}}</h3>
+      <span class="mhd-panel-meta">{{range_label}}</span>
+    </header>
+
+    {{#trend.has_data}}
+    <div class="mhd-trend-legend">
+      <span class="mhd-legend-item"><span class="mhd-legend-dot mhd-legend-dot--created"></span>
+        {{#str}} dashboard_created, local_moodesk {{/str}} <strong>{{trend.total_created}}</strong></span>
+      <span class="mhd-legend-item"><span class="mhd-legend-dot mhd-legend-dot--resolved"></span>
+        {{#str}} dashboard_resolved, local_moodesk {{/str}} <strong>{{trend.total_resolved}}</strong></span>
+    </div>
+
+    {{! Pure-CSS twin bars, one column per day. dashboard_charts.js draws a
+        line chart in front of this and moves it out of sight — but leaves it
+        in the accessibility tree, so the figures stay readable as text.
+
+        Which is why each column states its day in words: the bars carry their
+        numbers in their height, and a height is not something a screen reader
+        can report. Once the canvas mounts, this sentence is the only reading
+        of that day left. }}
+    <div class="mhd-trend-chart" data-mhd-chart="trend" data-chart-data="{{trend.chart}}">
+      {{#trend.points}}
+      <div class="mhd-trend-col" title="{{sr_label}}">
+        <span class="mhd-sr-only">{{sr_label}}</span>
+        <span class="mhd-trend-bar mhd-trend-bar--created" style="height: {{created_pct}}%;" aria-hidden="true"></span>
+        <span class="mhd-trend-bar mhd-trend-bar--resolved" style="height: {{resolved_pct}}%;" aria-hidden="true"></span>
+      </div>
+      {{/trend.points}}
+    </div>
+
+    <p class="mhd-trend-summary{{#trend.backlog_rising}} mhd-trend-summary--warn{{/trend.backlog_rising}}">
+      {{#trend.backlog_rising}}
+        {{#str}} dashboard_backlog_rising, local_moodesk, {{trend.backlog_delta}} {{/str}}
+      {{/trend.backlog_rising}}
+      {{^trend.backlog_rising}}
+        {{#str}} dashboard_backlog_steady, local_moodesk {{/str}}
+      {{/trend.backlog_rising}}
+    </p>
+    {{/trend.has_data}}
+
+    {{^trend.has_data}}
+    <p class="mhd-panel-empty">{{trend.no_data_label}}</p>
+    {{/trend.has_data}}
+  </section>
+
+  <section class="mhd-panel mhd-panel--status mhd-dash-cell mhd-dash-cell--status" aria-labelledby="mhd-title-status">
+    <header class="mhd-panel-head">
+      <h3 class="mhd-panel-title" id="mhd-title-status">{{#str}} dashboard_section_status, local_moodesk {{/str}}</h3>
+    </header>
+
+    {{#status.has_data}}
+    <p class="mhd-panel-total">
+      <strong>{{status.total}}</strong> {{#str}} dashboard_active_label, local_moodesk {{/str}}
+    </p>
+    <ul class="mhd-bd-list" data-mhd-chart="status" data-chart-data="{{status.chart}}">
+      {{#status.rows}}
+      <li class="mhd-bd-row">
+        <span class="mhd-bd-label"><span class="{{css}}"></span>{{label}}</span>
+        <span class="mhd-bd-bar" aria-hidden="true">
+          <span class="mhd-bd-bar-fill" style="width: {{pct}}%;"></span>
+        </span>
+        <span class="mhd-bd-count">{{count}}</span>
+        <span class="mhd-bd-pct">{{pct_display}}</span>
+      </li>
+      {{/status.rows}}
+    </ul>
+    {{/status.has_data}}
+
+    {{^status.has_data}}
+    <p class="mhd-panel-empty">{{status.no_data_label}}</p>
+    {{/status.has_data}}
+  </section>
+
+  {{! ══ Level 3 — Tickets by priority, then plugin panels ════════════════════ }}
+
+  <section class="mhd-panel mhd-dash-cell mhd-dash-cell--priority" aria-labelledby="mhd-title-priority">
+    <header class="mhd-panel-head">
+      <h3 class="mhd-panel-title" id="mhd-title-priority">{{#str}} dashboard_section_priority, local_moodesk {{/str}}</h3>
+    </header>
+
+    {{! Unlike the other three charts, this one does not hide the markup it
+        replaces: dashboard_charts.js moves the list in beside the pie and
+        restyles it as the legend. A pie shows shares but not counts, and its
+        slices need naming. }}
+    {{#priority.has_data}}
+    <ul class="mhd-bd-list" data-mhd-chart="priority" data-chart-data="{{priority.chart}}">
+      {{#priority.rows}}
+      <li class="mhd-bd-row">
+        <span class="mhd-bd-label">{{label}}</span>
+        <span class="mhd-bd-bar" aria-hidden="true">
+          <span class="mhd-bd-bar-fill {{css}}" style="width: {{pct}}%;"></span>
+        </span>
+        <span class="mhd-bd-count">{{count}}</span>
+        <span class="mhd-bd-pct">{{pct_display}}</span>
+      </li>
+      {{/priority.rows}}
+    </ul>
+    {{/priority.has_data}}
+
+    {{^priority.has_data}}
+    <p class="mhd-panel-empty">{{priority.no_data_label}}</p>
+    {{/priority.has_data}}
+  </section>
+
+  {{#pluginpanelsafterpriority}}{{{html}}}{{/pluginpanelsafterpriority}}
+
+  {{! ══ Level 4 — Tickets by department ═════════════════════════════════════ }}
+  <section class="mhd-panel mhd-dash-cell mhd-dash-cell--dept" aria-labelledby="mhd-title-departments">
+    <header class="mhd-panel-head">
+      <h3 class="mhd-panel-title" id="mhd-title-departments">{{#str}} dashboard_section_departments, local_moodesk {{/str}}</h3>
+    </header>
+
+    {{#departments.has_data}}
+    <div class="mhd-dept-legend">
+      {{#departments.legend}}
+      <span class="mhd-legend-item"><span class="mhd-legend-dot {{css}}"></span>{{label}}</span>
+      {{/departments.legend}}
+    </div>
+
+    <ul class="mhd-dept-list">
+      {{#departments.rows}}
+      <li class="mhd-dept-row">
+        <span class="mhd-dept-label">{{label}}</span>
+        <span class="mhd-dept-bar" style="width: {{width}}%;">
+          {{#segments}}
+          <span class="mhd-dept-seg {{css}}" style="width: {{pct}}%;"
+                title="{{label}}: {{count}}"></span>
+          {{/segments}}
+        </span>
+        <span class="mhd-dept-total">{{total}}</span>
+      </li>
+      {{/departments.rows}}
+    </ul>
+    {{/departments.has_data}}
+
+    {{^departments.has_data}}
+    <p class="mhd-panel-empty">{{departments.no_data_label}}</p>
+    {{/departments.has_data}}
+  </section>
+
+  {{! ══ Level 5 — Plugin panels, then Ticket aging ══════════════════════════ }}
+
+  {{#pluginpanelsbeforeaging}}{{{html}}}{{/pluginpanelsbeforeaging}}
+
+  <section class="mhd-panel mhd-panel--aging mhd-dash-cell mhd-dash-cell--aging" aria-labelledby="mhd-title-aging">
+    <header class="mhd-panel-head">
+      <h3 class="mhd-panel-title" id="mhd-title-aging">{{#str}} dashboard_section_aging, local_moodesk {{/str}}</h3>
+      <span class="mhd-panel-meta">{{#str}} dashboard_aging_meta, local_moodesk {{/str}}</span>
+    </header>
+
+    {{! Same treatment as priority: the pie replaces the bars, and the list
+        stays on as its legend rather than being hidden. }}
+    {{#aging.has_data}}
+    <ul class="mhd-bd-list" data-mhd-chart="aging" data-chart-data="{{aging.chart}}">
+      {{#aging.rows}}
+      <li class="mhd-bd-row">
+        <span class="mhd-bd-label">{{label}}</span>
+        <span class="mhd-bd-bar" aria-hidden="true">
+          <span class="mhd-bd-bar-fill {{css}}" style="width: {{pct}}%;"></span>
+        </span>
+        <span class="mhd-bd-count">{{count}}</span>
+        <span class="mhd-bd-pct">{{pct_display}}</span>
+      </li>
+      {{/aging.rows}}
+    </ul>
+    {{/aging.has_data}}
+
+    {{^aging.has_data}}
+    <p class="mhd-panel-empty">{{aging.no_data_label}}</p>
+    {{/aging.has_data}}
+  </section>
+
+  {{! ══ Level 6 — Plugin panels ════════════════════════════════════════════ }}
+  {{#pluginpanelsbeforeactivity}}{{{html}}}{{/pluginpanelsbeforeactivity}}
+
+  {{! ══ Level 7 — Recent activity ═══════════════════════════════════════════ }}
+  <section class="mhd-panel mhd-dash-cell mhd-dash-cell--activity" aria-labelledby="mhd-title-activity">
+    <header class="mhd-panel-head">
+      <h3 class="mhd-panel-title" id="mhd-title-activity">{{#str}} dashboard_section_activity, local_moodesk {{/str}}</h3>
+    </header>
+
+    {{#activity.has_data}}
+    <ul class="mhd-activity-list">
+      {{#activity.rows}}
+      <li class="mhd-activity-row">
+        <a class="mhd-activity-link" href="{{url}}">
+          <span class="mhd-activity-ref">{{ref}}</span>
+          <span class="mhd-activity-subject">{{subject}}</span>
+        </a>
+        <span class="mhd-activity-meta">
+          {{#show_priority}}<span class="{{priority_css}}">{{priority}}</span>{{/show_priority}}
+          <span class="{{status_css}}">{{status}}</span>
+          <span class="mhd-activity-time">{{timeago}}</span>
+        </span>
+      </li>
+      {{/activity.rows}}
+    </ul>
+    {{/activity.has_data}}
+
+    {{^activity.has_data}}
+    <p class="mhd-panel-empty">{{activity.no_data_label}}</p>
+    {{/activity.has_data}}
+  </section>
+
+  {{/has_any_data}}
+
+  {{! ══ Nothing to show ═════════════════════════════════════════════════════
+      Two different facts, and the difference is what the reader needs: a
+      filter that excludes everything is recoverable and says how, while a
+      quiet period is simply a quiet period. }}
+  {{^has_any_data}}
+  <section class="mhd-panel mhd-dash-empty">
+    <div class="mhd-empty-state">
+      <svg class="mhd-empty-state-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <use href="#mhd-icon-tickets"></use>
+      </svg>
+      {{! Keyed on hasfilters rather than haschips. A chip is dropped when its
+          label cannot be resolved — an archived department, a departed agent —
+          but the criterion behind it is still applied, and a reader who lands
+          on an empty page through one of those needs the way out, not a claim
+          that nothing happened this month. }}
+      {{#hasfilters}}
+      <h3 class="mhd-empty-state-title">{{#str}} dashboard_empty_filtered_title, local_moodesk {{/str}}</h3>
+      <p class="mhd-empty-state-desc">{{#str}} dashboard_empty_filtered_body, local_moodesk {{/str}}</p>
+      {{! A way back from a filter that matched nothing: recovery, not
+          invitation, so outlined rather than filled. }}
+      <a href="{{clearallurl}}" class="mhd-btn mhd-btn--outlined">
+        {{#str}} filter_clear_all, local_moodesk {{/str}}
+      </a>
+      {{/hasfilters}}
+      {{^hasfilters}}
+      <h3 class="mhd-empty-state-title">{{#str}} dashboard_empty_period_title, local_moodesk {{/str}}</h3>
+      <p class="mhd-empty-state-desc">{{#str}} dashboard_empty_period_body, local_moodesk {{/str}}</p>
+      {{/hasfilters}}
+    </div>
+  </section>
+  {{/has_any_data}}
+
+  {{! Panels plugins add (hook dashboard_panels), whether or not the period had data. }}
+  {{#haspluginpanels}}
+  {{#pluginpanels}}{{{html}}}{{/pluginpanels}}
+  {{/haspluginpanels}}
+
+  </div>{{! /.mhd-dash-sections }}
+
+</div>

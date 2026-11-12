@@ -1,0 +1,123 @@
+// =============================================================================
+// abstracts/_colors.scss
+// All colour tokens. No other file defines raw hex values.
+// =============================================================================
+
+@use 'sass:color';
+
+// Status colours.
+$mhd-status-new:        #6c757d;  // grey
+$mhd-status-open:       #0d6efd;  // blue
+$mhd-status-inprogress: #0dcaf0;  // cyan
+$mhd-status-pending:    #ffc107;  // amber
+$mhd-status-on-hold:    #6f42c1;  // purple
+$mhd-status-resolved:   #198754;  // green
+$mhd-status-closed:     #343a40;  // dark
+
+// Priority colours.
+$mhd-priority-low:    #6c757d;  // grey
+$mhd-priority-normal: #0dcaf0;  // cyan
+$mhd-priority-high:   #fd7e14;  // orange
+$mhd-priority-urgent: #dc3545;  // red
+
+// Department pill.
+$mhd-dept-pill-bg:    #e9ecef;
+$mhd-dept-pill-color: #495057;
+
+// Thread note border.
+$mhd-note-border: #ffc107;
+
+// Own message indentation highlight.
+$mhd-own-bg: #f8f9ff;
+
+// Workspace tab active underline (used when Bootstrap tabs unavailable).
+$mhd-tab-active-color: #0d6efd;
+
+// =============================================================================
+// Application-shell design system palette (phase F1).
+//
+// These tokens drive the standalone mooDesk UI. They are emitted as CSS custom
+// properties scoped under `.moodesk-app` (see base/_app-tokens.scss), so they
+// are inert on legacy screens and only take effect once a screen renders inside
+// the shell (ui_mode = app, phase F2). Refined against the design mockups in F2.
+// =============================================================================
+
+// Brand / primary.
+$mhd-color-primary:        #2563eb;  // royal blue — primary actions, active nav
+$mhd-color-primary-strong: #1e40af;  // navy — logo/wordmark, hover/pressed
+$mhd-color-primary-soft:   #e8f0fe;  // light blue — active item fill, soft accents
+
+// Surfaces.
+$mhd-color-canvas:         #f5f6fb;  // app content background (lavender-grey)
+$mhd-color-surface:        #ffffff;  // sidebar, topbar, cards
+$mhd-color-surface-muted:  #f1f3f9;  // search field, subtle fills
+
+// Text.
+$mhd-color-text:           #1f2937;  // primary text (slate-800)
+$mhd-color-text-muted:     #6b7280;  // secondary text (slate-500)
+$mhd-color-text-inverse:   #ffffff;
+
+// Borders / dividers.
+$mhd-color-border:         #e5e7eb;
+$mhd-color-border-strong:  #d1d5db;
+
+// Feedback (aligned with the existing status palette above).
+$mhd-color-success: $mhd-status-resolved;  // green
+$mhd-color-info:    $mhd-status-open;       // blue
+$mhd-color-warning: $mhd-status-pending;    // amber
+$mhd-color-danger:  $mhd-priority-urgent;   // red
+
+// Warning as *text*. The amber and orange above are chart and badge fills: at
+// 1.63:1 and 2.57:1 on white they are nowhere near the 4.5:1 that body copy
+// needs, and a warning nobody can read is worse than no warning. This is the
+// same hue family, darkened until it passes (5.18:1) — the fills are unchanged.
+$mhd-color-warning-text: #c2410c;
+
+// Focus ring.
+$mhd-color-focus: rgba(37, 99, 235, 0.4);
+
+// Table rows.
+//
+// A row under the pointer and a row that is selected have to be told apart at a
+// glance, and neither may compete with the header above them or with a status
+// pill inside them. Both are the brand hue at low alpha rather than a grey:
+// grey at this weight reads as "disabled" next to the muted text already in the
+// row, and the surface-muted fill is spoken for — it is what the header uses.
+//
+// Alpha rather than a solid: the row sits on the surface everywhere except in
+// the card layout, where it sits on the canvas, and a translucent tint is the
+// same tint on both.
+$mhd-color-row-hover:    rgba($mhd-color-primary, 0.04);
+$mhd-color-row-selected: rgba($mhd-color-primary, 0.08);
+
+// =============================================================================
+// Interactive roles.
+//
+// A control that carries an M3 state layer needs contrast headroom the resting
+// colour does not have to provide. The layer is the label's own colour laid
+// over the container at up to 12%, so it always pulls the background toward the
+// label — hover, focus and press each cost the pairing some ratio.
+//
+// $mhd-color-primary at 5.17:1 against white had 0.67 to give and needs 0.67
+// more, so a pressed primary button measured 4.18:1. These are the same hues
+// with enough room to survive their own state layer, derived rather than picked
+// so the brand stays the single origin.
+//
+// Verified worst case (pressed, 12%): primary container 5.13:1, danger
+// container 4.72:1, danger-strong label 5.29:1 on canvas.
+// =============================================================================
+
+$mhd-color-primary-container: color.adjust($mhd-color-primary, $lightness: -6%);
+$mhd-color-danger-container:  color.adjust($mhd-color-danger, $lightness: -8%);
+$mhd-color-danger-strong:     color.adjust($mhd-color-danger, $lightness: -10%);
+
+// =============================================================================
+// Shadow colours.
+//
+// A shadow's colour is a colour, so it lives here even though the shadow itself
+// is an elevation token in _variables.scss.
+// =============================================================================
+
+// The faint lift the reference design gives a card that holds still while
+// others scroll under it (the SLA card at the top of the ticket rail).
+$mhd-color-shadow-soft: rgba(0, 0, 0, 0.06);

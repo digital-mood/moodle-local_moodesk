@@ -1,0 +1,282 @@
+// =============================================================================
+// layout/_app-sidebar.scss
+//
+// Application-shell sidebar, in three vertical bands: a fixed brand header,
+// the navigation (the only band that scrolls), and a pinned footer holding
+// "Return to Moodle" and Settings — plus the collapsed icon-only rail.
+// Scoped under `.moodesk-app`; consumes F1 tokens. Distinct from
+// layout/_sidebar.scss (the ticket-detail control sidebar) — different BEM
+// namespace, no collision.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+
+.moodesk-app__sidebar {
+  flex: 0 0 var(--mhd-sidebar-width);
+  width: var(--mhd-sidebar-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--mhd-color-surface);
+  border-right: 1px solid var(--mhd-color-border);
+  position: sticky;
+  top: 0;
+  // The three bands are laid out inside this height, so it has to be the height
+  // the viewport actually shows: with 100vh alone the footer sits under the
+  // browser's own bar on a phone. 100vh stays as the fallback for browsers
+  // without dynamic viewport units.
+  height: 100vh;
+  height: 100dvh;
+  // The sidebar itself never scrolls. The navigation band owns the scroll so
+  // the brand and the footer cannot be pushed out of view — stated here rather
+  // than left to the default, because it is the point of the whole layout.
+  overflow: hidden;
+  transition: flex-basis var(--mhd-transition-fast), width var(--mhd-transition-fast);
+}
+
+// ── Brand ─────────────────────────────────────────────────────────────────
+.moodesk-app__brand {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--mhd-space-sm);
+  height: 60px;
+  padding: var(--mhd-space-sm);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.moodesk-app__brand-mark {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.moodesk-app__brand-glyph {
+  width: 36px;
+  height: 36px;
+}
+
+.moodesk-app__brand-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.moodesk-app__brand-name {
+  font-size: var(--mhd-font-size-lg);
+  font-weight: var(--mhd-font-weight-bold);
+}
+
+.moodesk-app__brand-name-moo {
+  color: #0b2f63;
+}
+
+.moodesk-app__brand-name-desk {
+  color: #4d86d6;
+}
+
+.moodesk-app__brand-tagline {
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+  white-space: nowrap;
+}
+
+// ── Drawer close control ─────────────────────────────────────────────────────
+// Only ever visible inside an open off-canvas drawer; the query below turns it
+// on. Two decisions here, both load-bearing:
+//
+//  - `position: absolute`. As a flex item it would be a fourth band and the
+//    three above would have to negotiate their height with it. Out of flow, the
+//    brand/nav/footer split is exactly what it was. The <aside> is positioned at
+//    every width, so it is the containing block either way.
+//  - `display: none` as the resting state, rather than `visibility` or an
+//    off-screen shift. It takes the control out of the accessibility tree, so a
+//    rail — and a drawer that is closed and parked off-canvas — offers a screen
+//    reader one navigation control, the topbar's toggle, and not two.
+//
+// Sizing and colours are the topbar toggle's, deliberately: it is the same
+// affordance at the other end of the same gesture.
+.moodesk-app__drawer-close {
+  display: none;
+  position: absolute;
+  // Centred in the 60px brand band, the way the toggle is centred in the
+  // topbar: (60 - 40) / 2.
+  top: 10px;
+  right: var(--mhd-space-sm);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mhd-radius-md);
+  background: transparent;
+  color: var(--mhd-color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+    color: var(--mhd-color-text);
+  }
+}
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+.moodesk-app__nav {
+  flex: 1 1 auto;
+  // A column flex item starts at min-height:auto and refuses to shrink below
+  // its own content. Without this the navigation pushes the footer past the
+  // bottom of the viewport instead of scrolling inside its own band, and no
+  // amount of overflow on either element fixes it.
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mhd-space-sm);
+}
+
+.moodesk-app__nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+// ── Sections (Operation / Administration / System) ───────────────────────────
+.moodesk-app__nav-group + .moodesk-app__nav-group {
+  margin-top: var(--mhd-space-md);
+}
+
+.moodesk-app__nav-group-label {
+  margin: 0 0 var(--mhd-space-xs);
+  padding: 0 var(--mhd-space-sm);
+  font-size: var(--mhd-font-size-xs);
+  font-weight: var(--mhd-font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mhd-color-text-muted);
+}
+
+.moodesk-app__nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--mhd-space-sm);
+  padding: 10px var(--mhd-space-sm);
+  border-radius: var(--mhd-radius-md);
+  color: var(--mhd-color-text);
+  font-size: var(--mhd-font-size-md);
+  font-weight: var(--mhd-font-weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--mhd-transition-fast), color var(--mhd-transition-fast);
+
+  .moodesk-app__icon {
+    color: var(--mhd-color-text-muted);
+  }
+
+  // Inactive label is muted; active state below overrides it.
+  .moodesk-app__nav-text {
+    color: var(--mhd-color-text-muted);
+  }
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+    color: var(--mhd-color-text);
+    text-decoration: none;
+  }
+}
+
+// Active item: soft fill + brand colour for label and icon.
+.moodesk-app__nav-item.is-active > .moodesk-app__nav-link {
+  background: var(--mhd-color-primary-soft);
+  color: var(--mhd-color-primary);
+  font-weight: var(--mhd-font-weight-semibold);
+
+  .moodesk-app__icon,
+  .moodesk-app__nav-text {
+    color: var(--mhd-color-primary);
+  }
+}
+
+// ── Footer ("Return to Moodle" + Settings) ───────────────────────────────────
+.moodesk-app__sidebar-footer {
+  flex: 0 0 auto;
+  padding: var(--mhd-space-sm);
+  border-top: 1px solid var(--mhd-color-border);
+}
+
+// ── Collapsed icon-only rail (above the tablet step) ──────────────────────────
+// Below it the sidebar is an off-canvas drawer, so a collapsed rail is a
+// concept that only exists up here — scoping it to the exact complement of the
+// drawer's own query keeps the two behaviours from ever both applying.
+@include bp.mhd-respond-to('tablet-up') {
+  .moodesk-app--collapsed {
+    .moodesk-app__sidebar {
+      flex-basis: var(--mhd-sidebar-width-collapsed);
+      width: var(--mhd-sidebar-width-collapsed);
+    }
+
+    .moodesk-app__brand-text,
+    .moodesk-app__nav-text,
+    .moodesk-app__nav-group-label {
+      display: none;
+    }
+
+    .moodesk-app__brand,
+    .moodesk-app__nav-link {
+      justify-content: center;
+      gap: 0;
+    }
+  }
+}
+
+// ── Tablet and below: off-canvas navigation drawer (F7) ──────────────────────
+// The sidebar slides in over the content; the topbar toggle opens it and a
+// backdrop click / Escape closes it (app_shell.js). Full labels are kept — it
+// is a real drawer, not the icon rail.
+@include bp.mhd-respond-to('tablet') {
+  .moodesk-app__sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    flex-basis: var(--mhd-sidebar-width);
+    width: var(--mhd-sidebar-width);
+    // Same reason as the rail above, and this is the case that shows it: the
+    // drawer is the full-height panel a phone opens over the content.
+    height: 100vh;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform var(--mhd-transition-fast);
+    box-shadow: var(--mhd-shadow-card);
+  }
+
+  .moodesk-app--drawer-open .moodesk-app__sidebar {
+    transform: translateX(0);
+  }
+
+  // The close control, and only while the drawer is actually open. A closed
+  // drawer is parked off-canvas but still in the document, so a control shown
+  // there would be in the tab order with nothing on screen to explain it.
+  //
+  // No z-index: the control is inside the drawer, which is already the topmost
+  // layer of the shell (60, over the backdrop's 50 and the topbar's 10). That is
+  // the whole reason it lives here rather than in the topbar.
+  .moodesk-app--drawer-open .moodesk-app__drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Room for it. The brand text is nowrap inside an overflow:hidden box, so it
+  // stops short of the control rather than running underneath it — the English
+  // tagline is short enough not to reach, a longer translation is not.
+  .moodesk-app--drawer-open .moodesk-app__brand {
+    padding-right: 56px;
+  }
+}

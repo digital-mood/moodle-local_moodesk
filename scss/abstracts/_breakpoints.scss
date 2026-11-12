@@ -1,0 +1,72 @@
+// =============================================================================
+// abstracts/_breakpoints.scss
+// Responsive breakpoint tokens and the respond-to mixin.
+// No output — import-only file.
+// =============================================================================
+
+// The scale is Bootstrap's, and deliberately so: the plugin renders inside
+// Moodle pages whose theme is Bootstrap-based (4.6 on Moodle 4.5, 5.3 on
+// Moodle 5.x), several templates use its grid classes, and every form on the
+// screen is a Moodle form carrying the theme's own responsive utilities. A
+// scale of our own would put two systems on one page, reflowing at different
+// widths.
+//
+// READING THE VALUES: each token names the width at which the NEXT step
+// begins — 576px is where tablet starts, so the phone step ends at 575px. The
+// `respond-to` mixin does that arithmetic; nothing outside this file should.
+//
+// The one exception is the tablet step, and it has a name of its own to say so:
+// `$mhd-bp-tablet-max` is the LAST pixel of the step, not the first of the next
+// one. 768px is an iPad held upright, and there the app shell's off-canvas
+// drawer is the right call — a fixed 256px rail would leave 512px of content.
+// So the tablet step is inclusive at its top edge, the shell switches to a rail
+// at 769px, and `'tablet'` / `'tablet-up'` are exact complements: no gap, no
+// overlap. Before this was written down, the shell used a raw 768/769 pair
+// while the mixin used 767, and a viewport of exactly 768px got the drawer with
+// desktop styling inside it.
+
+// ORDERING: a media query adds no specificity, so a base declaration written
+// after a breakpoint block simply outranks it. See the note in main.scss — it
+// records the three bugs that came through that gap.
+
+// Screen width boundaries.
+$mhd-bp-mobile:      576px;  // Phone step ends at 575px.
+$mhd-bp-tablet-max:  768px;  // Tablet step ends AT 768px — see above.
+$mhd-bp-desktop:     992px;  // Tablet/laptop step ends at 991px.
+$mhd-bp-wide:       1200px;
+// Past this, a page laid out for a laptop stops using the width and starts
+// stretching into it: bars run the length of the desk and labels drift away
+// from their figures. Dense screens get more columns, not longer rows.
+$mhd-bp-ultrawide:  1800px;
+
+/// Emit a media query block for the named step.
+///
+///  'mobile'        — max-width: 575px  (phones)
+///  'tablet'        — max-width: 768px  (phones + tablets, iPad upright included)
+///  'tablet-up'     — min-width: 769px  (exact complement of 'tablet')
+///  'below-desktop' — max-width: 991px  (everything under the desktop layout)
+///  'desktop'       — min-width: 992px  (desktops and above)
+///  'wide'          — min-width: 1200px (large screens)
+///  'ultrawide'     — min-width: 1800px (wide desktops, ultrawide monitors)
+///
+/// @param {String} $bp One of the names above.
+@mixin mhd-respond-to($bp) {
+  @if $bp == 'mobile' {
+    @media (max-width: calc(#{$mhd-bp-mobile} - 1px)) { @content; }
+  } @else if $bp == 'tablet' {
+    @media (max-width: #{$mhd-bp-tablet-max}) { @content; }
+  } @else if $bp == 'tablet-up' {
+    @media (min-width: #{$mhd-bp-tablet-max + 1}) { @content; }
+  } @else if $bp == 'below-desktop' {
+    @media (max-width: calc(#{$mhd-bp-desktop} - 1px)) { @content; }
+  } @else if $bp == 'desktop' {
+    @media (min-width: #{$mhd-bp-desktop}) { @content; }
+  } @else if $bp == 'wide' {
+    @media (min-width: #{$mhd-bp-wide}) { @content; }
+  } @else if $bp == 'ultrawide' {
+    @media (min-width: #{$mhd-bp-ultrawide}) { @content; }
+  } @else {
+    @error 'Unknown breakpoint "#{$bp}". Expected one of: mobile, tablet, ' +
+           'tablet-up, below-desktop, desktop, wide, ultrawide.';
+  }
+}

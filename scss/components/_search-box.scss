@@ -1,0 +1,115 @@
+// =============================================================================
+// components/_search-box.scss
+//
+// The Search Box — a prominent search field with its own submit.
+//
+// Not the toolbar's filter input. layout/_filters.scss draws `.mhd-filter-search`
+// at 36px to sit in a band of selects and narrow a table; this is the primary
+// control of a page whose job is finding something, and it gets the height and
+// the presence a primary control gets. The two are different objects with
+// different jobs, and making one a variant of the other would have meant every
+// change to a filter reaching a search page, or the reverse.
+//
+// Introduced by the knowledge base landing; owned by nobody in particular.
+// Nothing here says "knowledge base": the same markup will hold the composer's
+// article suggestions (KB-04) and whatever else has a query to type.
+//
+// ── The contract ─────────────────────────────────────────────────────────────
+//   .mhd-search-box          the <form role="search">
+//   .mhd-search-box__row     icon + input + button on one line
+//   .mhd-search-box__icon    the glass, inside the field's left padding
+//   .mhd-search-box__input   the field; it grows, the button does not
+//   .mhd-search-box__hint    optional line under the field (aria-describedby)
+//
+// The button is components/_button.scss's, untouched: this file positions it
+// and says nothing about its size or colour.
+//
+// Colour tokens live in abstracts/_colors.scss, dimensions in
+// abstracts/_variables.scss — this file defines neither.
+// =============================================================================
+
+@use 'sass:math';
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+
+$_search-box-height: 48px;
+
+.mhd-search-box {
+  // A search page's field stops growing where a line of prose would: past
+  // this width the eye has to travel to find the button.
+  max-width: 720px;
+}
+
+.mhd-search-box__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+}
+
+.mhd-search-box__icon {
+  position: absolute;
+  left: v.$mhd-space-md;
+  // Half the FIELD's height, not the row's: on a phone the button drops to a
+  // second line and the row is twice as tall, and a glass centred on the row
+  // would sit between the two.
+  top: math.div($_search-box-height, 2);
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  color: c.$mhd-color-text-muted;
+  pointer-events: none;
+}
+
+.mhd-search-box__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: $_search-box-height;
+  padding: 0 v.$mhd-space-md 0 44px;
+  font-size: v.$mhd-font-size-md;
+  color: c.$mhd-color-text;
+  background: c.$mhd-color-surface;
+  border: 1px solid c.$mhd-color-border-strong;
+  border-radius: v.$mhd-radius-lg;
+  transition: border-color v.$mhd-transition-fast, box-shadow v.$mhd-transition-fast;
+
+  &::placeholder {
+    color: c.$mhd-color-text-muted;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: c.$mhd-color-primary;
+    box-shadow: 0 0 0 3px c.$mhd-color-focus;
+  }
+
+  // The browser's own clear control is welcome; its default size is not.
+  &::-webkit-search-cancel-button {
+    cursor: pointer;
+  }
+}
+
+.mhd-search-box__hint {
+  margin: v.$mhd-space-xs 0 0;
+  font-size: v.$mhd-font-size-sm;
+  color: c.$mhd-color-text-muted;
+}
+
+@include bp.mhd-respond-to('mobile') {
+  // The field keeps the whole line; the button drops under it, full width, so
+  // a thumb finds it without aiming.
+  .mhd-search-box__row {
+    flex-wrap: wrap;
+  }
+
+  .mhd-search-box__input {
+    flex-basis: 100%;
+  }
+
+  // The submit, by role rather than by its component class: components/_button.scss
+  // is the only file allowed an opinion about a button.
+  .mhd-search-box__row > [type='submit'] {
+    flex: 1 1 100%;
+  }
+}

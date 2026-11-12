@@ -1,0 +1,40 @@
+// =============================================================================
+// components/_empty-state.scss
+// Empty state: centered icon, message, and optional CTA.
+// Reusable across all modules (ticket list, dashboard, reports, etc.).
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+.mhd-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: v.$mhd-space-xl v.$mhd-space-lg;
+  min-height: 240px;
+}
+
+.mhd-empty-state-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: v.$mhd-space-md;
+  opacity: 0.35;
+  flex-shrink: 0;
+}
+
+.mhd-empty-state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #495057;
+  margin: 0 0 v.$mhd-space-xs;
+}
+
+.mhd-empty-state-desc {
+  font-size: v.$mhd-font-size-sm;
+  color: #6c757d;
+  margin: 0 0 v.$mhd-space-md;
+  max-width: 320px;
+  line-height: 1.5;
+}

@@ -1,0 +1,29 @@
+// =============================================================================
+// base/_animations.scss
+// Shared @keyframes declarations.
+// All animation names are prefixed mhd- to avoid collisions with Moodle core.
+// =============================================================================
+
+/// Toolbar slide-in — used by the bulk action toolbar.
+@keyframes mhd-toolbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/// Fade in — generic panel/overlay entrance.
+@keyframes mhd-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/// Pulse — loading skeleton / spinner indicator.
+@keyframes mhd-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

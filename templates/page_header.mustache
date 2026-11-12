@@ -1,0 +1,134 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/page_header
+
+    The one header band at the top of every mooDesk screen.
+
+        Title                                    [Secondary] [Primary]
+        Optional description
+
+    Built by \local_moodesk\output\page_header, never by hand. A screen includes
+    it as a partial against a `pageheader` key in its own context, or renders it
+    on its own via page_header::render() when its body is a moodleform.
+
+    NOTE FOR EDITORS: a Mustache comment ends at the first `}` `}` it meets, so a
+    tag written out in full inside this block would close the comment there and
+    spill the rest of it into the page. That is not hypothetical — it happened
+    once, to this file. Describe tags; do not spell them.
+
+    ── The order is structural ──────────────────────────────────────────────────
+    Secondary actions come from the `actions` list and the primary from the
+    `primaryaction` key, and this template renders the second section after the
+    first. That is the whole enforcement of "the primary action is the right-most
+    action": not a class anyone has to remember, but which section of the template
+    the action was put into. Do not merge the two lists.
+
+    ── Heading level ────────────────────────────────────────────────────────────
+    <h1>, because app_page renders on Moodle's `embedded` pagelayout, which draws
+    no page heading of its own. Before this component every screen but one opened
+    its outline at <h2> with nothing above it. It carries the id mhd-page-title so
+    a region of the page can be labelled by it (aria-labelledby); one header per
+    screen keeps that id unique.
+
+    ── No empty slots ───────────────────────────────────────────────────────────
+    Description, meta and the action row each render only when they have content.
+    A title-only header emits one wrapper, one heading, and nothing else.
+
+    Context variables:
+      * title         - Localised page title (required)
+      * description   - Localised description, or null/absent
+      * meta          - Raw HTML for the non-interactive right slot (a status pill), or null
+      * actions       - Secondary actions, left to right. Each is a page_header_action context.
+      * primaryaction - The one primary action, or null. A page_header_action context.
+      * hasactions    - True when any of meta / actions / primaryaction is present
+
+    Example context (json):
+    {
+      "title": "Agents",
+      "description": "People who can be assigned tickets.",
+      "meta": null,
+      "hasactions": true,
+      "actions": [
+        {
+          "label": "Manage in Moodle",
+          "url": "/admin/roles/assign.php",
+          "hasurl": true,
+          "hasicon": false,
+          "icononly": false,
+          "variant": "outlined",
+          "attributes": [{"name": "target", "value": "_blank"}],
+          "hasattributes": true
+        }
+      ],
+      "primaryaction": {
+        "label": "Add agent",
+        "url": "/local/moodesk/add_agent.php",
+        "hasurl": true,
+        "icon": "plus",
+        "hasicon": true,
+        "icononly": true,
+        "variant": "filled",
+        "attributes": [],
+        "hasattributes": false
+      }
+    }
+}}
+<header class="mhd-page-header">
+
+  {{! FIRST ROW — what the page is, and what can be done on it. Nothing else
+      shares this line. The description used to sit in here with the title,
+      inside one `__text` column, which meant the actions were laid out beside
+      the whole block: on a narrow screen the prose wrapped into a column half
+      the width of the band while the button sat in the space it had given up.
+      Two rows, and the wrap rule below only has the title to reason about. }}
+  <div class="mhd-page-header__top">
+
+    {{! The id is fixed because there is exactly one page header per screen, by
+        construction (page_header_markup_test pins it). It is what a landmark
+        deeper in the page points at — an <article> labelled by the page's own
+        title, rather than by a second copy of it. }}
+    <h1 class="mhd-page-header__title" id="mhd-page-title">{{title}}</h1>
+
+    {{#hasactions}}
+    <div class="mhd-page-header__actions">
+
+      {{! Not an action: state the page reports, not something the user can do. }}
+      {{#meta}}<div class="mhd-page-header__meta">{{{meta}}}</div>{{/meta}}
+
+      {{! Secondary — outlined, in the order they were added. }}
+      {{#actions}}
+        {{> local_moodesk/page_header_action }}
+      {{/actions}}
+
+      {{! Primary — filled, and the last control in the row by construction. }}
+      {{#primaryaction}}
+        {{> local_moodesk/page_header_action }}
+      {{/primaryaction}}
+
+    </div>
+    {{/hasactions}}
+
+  </div>
+
+  {{! SECOND ROW, and only when there is one to draw. Absent from the markup
+      entirely when there is no description, so it can cost no space. }}
+  {{#description}}
+  <p class="mhd-page-header__description">{{description}}</p>
+  {{/description}}
+
+</header>

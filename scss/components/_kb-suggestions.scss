@@ -1,0 +1,197 @@
+// =============================================================================
+// components/_kb-suggestions.scss
+// The "Suggested articles" block inside the New Ticket form (KB-04).
+//
+// A short list of links between the category row and the description, filled
+// by amd/src/kb_suggestions.js from the knowledge base as the subject is typed.
+// It sits inside a form that is already dense, so everything here is about
+// taking as little as possible: no card chrome, compact rows, a heading that
+// is the only thing left when there is nothing to show.
+//
+// Not the knowledge base's cards (modules/_knowledge.scss). Those carry a date,
+// a meta line and the card shell; a suggestion is a row, and a form is not a
+// listing.
+//
+// States are classes on the root, set by the module and by the server:
+//   .is-idle      nothing to show — the heading and nothing else
+//   .is-loading   first results on their way — skeleton lines
+//   .is-updating  a newer request in flight; the previous list stays but is
+//                 demoted so it cannot be read as the answer to the new subject
+//   .is-results   the list
+//   .is-error     one muted line
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+
+$_suggest-icon: 14px;
+
+.mhd-kb-suggest {
+  margin: 0 0 v.$mhd-space-md;
+  min-width: 0;
+}
+
+.mhd-kb-suggest__head {
+  display: flex;
+  align-items: baseline;
+  gap: v.$mhd-space-sm;
+  min-width: 0;
+}
+
+.mhd-kb-suggest__title {
+  margin: 0;
+  font-size: v.$mhd-font-size-sm;
+  font-weight: v.$mhd-font-weight-semibold;
+  line-height: v.$mhd-line-height;
+  color: c.$mhd-color-text;
+}
+
+// "Updating…" — only while a newer request is in flight over an old list.
+.mhd-kb-suggest__status {
+  display: none;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+
+  .is-updating & {
+    display: inline;
+  }
+}
+
+.mhd-kb-suggest__intro {
+  display: none;
+  margin: 0 0 v.$mhd-space-xs;
+  font-size: v.$mhd-font-size-xs;
+  line-height: v.$mhd-line-height;
+  color: c.$mhd-color-text-muted;
+
+  .is-results &,
+  .is-updating & {
+    display: block;
+  }
+}
+
+.mhd-kb-suggest__body {
+  min-width: 0;
+}
+
+.mhd-kb-suggest__skeleton {
+  padding: v.$mhd-space-xs 0;
+}
+
+// ── The list ──
+.mhd-kb-suggest__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid c.$mhd-color-border;
+  border-radius: v.$mhd-radius-md;
+  background: c.$mhd-color-surface;
+  transition: opacity v.$mhd-transition-fast;
+
+  // Demoted, not gone: readable, but plainly not the current answer.
+  .is-updating & {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+.mhd-kb-suggest__item {
+  padding: v.$mhd-space-sm v.$mhd-space-md;
+  min-width: 0;
+
+  + .mhd-kb-suggest__item {
+    border-top: 1px solid c.$mhd-color-border;
+  }
+}
+
+.mhd-kb-suggest__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: v.$mhd-space-sm;
+  min-width: 0;
+}
+
+.mhd-kb-suggest__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: v.$mhd-font-size-sm;
+  font-weight: v.$mhd-font-weight-medium;
+  line-height: v.$mhd-line-height-tight;
+  color: c.$mhd-color-primary;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    color: c.$mhd-color-primary-strong;
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid c.$mhd-color-primary;
+    outline-offset: 2px;
+    border-radius: v.$mhd-radius-sm;
+  }
+}
+
+.mhd-kb-suggest__ext {
+  width: $_suggest-icon;
+  height: $_suggest-icon;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.mhd-kb-suggest__category {
+  flex-shrink: 0;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+  white-space: nowrap;
+}
+
+.mhd-kb-suggest__excerpt {
+  margin: 2px 0 0;
+  font-size: v.$mhd-font-size-xs;
+  line-height: v.$mhd-line-height;
+  color: c.$mhd-color-text-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Error ──
+.mhd-kb-suggest__error {
+  display: none;
+  margin: 0;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+
+  .is-error & {
+    display: block;
+  }
+}
+
+// ── Phone ──
+// The form is long on a phone; an idle heading that promises nothing yet is
+// one line it can do without. The block returns with its first result.
+@include bp.mhd-respond-to('mobile') {
+  .mhd-kb-suggest.is-idle {
+    display: none;
+  }
+
+  // Title and category stack: a wrapped tag beside a long title reads as two
+  // columns of nothing.
+  .mhd-kb-suggest__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mhd-kb-suggest__list {
+    transition: none;
+  }
+}

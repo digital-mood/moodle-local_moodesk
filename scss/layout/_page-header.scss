@@ -1,0 +1,220 @@
+// =============================================================================
+// layout/_page-header.scss
+//
+// The Page Header — the one band at the top of every mooDesk screen.
+//
+//   Title                                      [Secondary] [Primary]
+//   Optional description
+//
+// One component, one set of rules for how the row reflows, one place it breaks.
+// Built by \local_moodesk\output\page_header and rendered by
+// templates/page_header.mustache; nothing else declares these names, and
+// tests/page_header_markup_test.php enforces that.
+//
+// ── What it replaced ─────────────────────────────────────────────────────────
+// Eight idioms across twenty-eight screens: `.mhd-list-header` (here),
+// `.mhd-dash-header` (modules/_dashboard), `.mhd-page-header` (modules/_reports
+// — the general name in the least general file), `.moodesk-form-page__head`
+// (built with html_writer in PHP), a Bootstrap `d-flex justify-content-between`
+// on eleven screens in two spacing variants, a bare `<h2>` on two, and nothing
+// at all on eight. Four title sizes, one of which was whatever the site's Moodle
+// theme said an `<h2>` was, because base/_app-reset.scss resets a heading's
+// margin, colour, weight and line-height but not its size.
+//
+// ── What is NOT in here ──────────────────────────────────────────────────────
+// The buttons. A header action is `.mhd-btn` at the default size, and how big a
+// button is belongs to components/_button.scss and nowhere else — a rule
+// button_markup_test enforces. This file lays them out; it does not size them.
+//
+// Section chrome one level down is also not this: `.mhd-datatable-title` is a
+// panel heading, `.mhd-panel-head` a dashboard card's, `.mhd-report-header` a
+// report section's, and `.mhd-detail__header` is the ticket's own identity,
+// shared verbatim with the drawer. Those say what a section is. This says what
+// the page is, and there is one per screen.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors'    as c;
+
+// ── The row ──────────────────────────────────────────────────────────────────
+//
+// RESPONSIVE, AND WHY THERE IS NO MEDIA QUERY IN THIS FILE.
+//
+// The band is one row and stays one row: the title on the left, the actions at
+// the right end of the same line, at every width. Under it, the description.
+// That shape is the component's contract, so it cannot depend on a device class
+// and there is no breakpoint here to keep in sync with anything.
+//
+// This REVERSES what used to live here twice over.
+//
+// `.mhd-list-header` refused to wrap and ellipsis-truncated the title below
+// 576px. Then this file replaced that with `flex-wrap: wrap` plus a 220px basis
+// on the text column, so the actions dropped to a second, full-width row once
+// the title could no longer hold 220px — which on the Agents screen at 402px put
+// "Manage roles" and the plus button on a line of their own, under a title that
+// had the rest of the band to itself.
+//
+// Both were answers to the same question — what gives way when the row is too
+// narrow — and the answer is neither. The title gives way, by wrapping in place;
+// the actions keep the width they need and never leave the line. A wrapped title
+// is legible, a truncated one is a guess, and an action on its own row below the
+// title has stopped reading as that title's action.
+//
+// So the squeeze is resolved entirely inside the row, and in this order:
+//
+//   1. The ACTIONS fold first. They give up width until they are as narrow as
+//      their widest button, and the buttons wrap INSIDE their own column — two
+//      short rows of buttons at the right end of the band, still beside the
+//      title, never beneath it.
+//   2. Only then does the title give up width, wrapping mid-word rather than
+//      pushing anything off the edge.
+//
+// The order is the whole reason `flex-shrink` is not 1 on both. With equal
+// shrink each column gives up width in proportion to what it asked for, and the
+// column that asks for most is usually the actions — so on Reports at 320px the
+// three buttons kept their line and "Reports" was squeezed into "Repor / ts"
+// beside them. A title broken mid-word to spare a button a second row is the
+// wrong trade: a button that wraps is still a whole button, and folding a row of
+// buttons costs nothing that folding a word does not cost more.
+//
+// Step 2 is why `min-width` is spelled on the title below: a flex item's
+// automatic minimum is its content, and an item that cannot shrink past its
+// content is an item that pushes the actions out of the band instead.
+//
+// ── The band ─────────────────────────────────────────────────────────────────
+// TWO ROWS, and the outer element only stacks them. Deliberately not a flex
+// column with a `gap`: a gap would be spent whether or not there is a second row
+// to separate, and a header with no description would carry the space of one.
+// The description brings its own top margin instead, so absent means absent.
+.mhd-page-header {
+  margin-bottom: v.$mhd-space-lg;
+}
+
+// ── First row: the title, and what can be done on the page ───────────────────
+//
+// `nowrap` is the rule the whole file is about. It is not a default left in
+// place: it is the statement that the actions belong to the title's line, and
+// the two rules below are what make holding that line safe at 320px.
+//
+// This row used to hold `__text` — title AND description in one column — so the
+// actions were laid out beside the whole block: past the wrap point the prose
+// reflowed into a column half the band's width while the button occupied the
+// width it had given up. The description is a sibling now.
+.mhd-page-header__top {
+  display: flex;
+  flex-wrap: nowrap;
+  // Centred, which is safe now and was not before. Alignment used to track
+  // whether a description happened to exist — six screens centred, five started,
+  // so two sibling screens put their buttons at different heights. With the
+  // description out of this row, its height is the title's or the buttons',
+  // never the prose's, and centring means the same thing on every screen.
+  align-items: center;
+  gap: v.$mhd-space-md;
+}
+
+// Takes the room that is going, and is the LAST to give it back. `auto` rather
+// than a fixed basis: the basis used to BE the wrap rule and there is no wrap
+// left for it to trigger, so the title simply asks for the width of its own text
+// and shrinks from there — once the actions have folded as far as they can.
+//
+// The floor is the readability guard, and it is deliberately small. A flex item
+// will not shrink past its content unless it is told it may, and a title that
+// refuses to shrink is a title that shoves the actions off the right edge — the
+// one outcome this component now rules out. 4ch is about a syllable at the title
+// size: narrow enough that the actions get what they need on a 320px screen,
+// wide enough that what is left of the title is still a word and not a column of
+// single letters.
+.mhd-page-header__title {
+  flex: 1 1 auto;
+  min-width: 4ch;
+}
+
+// FALLBACKS ARE NOT DECORATION HERE. base/_app-tokens.scss declares every
+// custom property on `.moodesk-app`, and the reports screen's printable view
+// renders on Moodle's `print` pagelayout — outside the shell, so that wrapper
+// does not exist and none of these tokens resolve. Without the second argument
+// the printed title falls back to the browser's default `h1` and the page comes
+// off the printer looking like an unstyled document. The literals match
+// abstracts/, which stays the source of truth; this is the same belt-and-braces
+// modules/_ticket-detail.scss already uses.
+.mhd-page-header__title {
+  margin: 0;
+  font-size: var(--mhd-font-size-xl, 1.375rem);
+  font-weight: var(--mhd-font-weight-bold, 700);
+  line-height: var(--mhd-line-height-tight, 1.25);
+  color: var(--mhd-color-text, #{c.$mhd-color-text});
+  // A long department name wraps mid-word rather than pushing the actions off
+  // the edge. Never `text-overflow: ellipsis` — see the note above.
+  overflow-wrap: anywhere;
+}
+
+// ── Second row: the description ──────────────────────────────────────────────
+// Full width of the band and starting at the title's left edge, because it is a
+// sibling of the row above rather than a column inside it. Wraps as prose does.
+// The top margin is this row's whole share of the vertical rhythm — see the note
+// on the outer element about why there is no `gap`.
+.mhd-page-header__description {
+  margin: v.$mhd-space-xs 0 0;
+  font-size: var(--mhd-font-size-md, 0.9375rem);
+  color: var(--mhd-color-text-muted, #{c.$mhd-color-text-muted});
+  // Prose stops being readable somewhere past 75 characters, and the shell's
+  // content area is wider than that on a desk.
+  max-width: 72ch;
+}
+
+// ── The actions ──────────────────────────────────────────────────────────────
+// Wraps rather than scrolls: an action pushed off the right edge is an action
+// nobody takes. It wraps WITHIN this column, so a header too narrow for one line
+// of buttons shows two short lines of them beside the title — never a row of
+// buttons under it. Right-aligned, so the primary sits at the far end of the
+// band however many lines the column took.
+.mhd-page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: v.$mhd-space-sm;
+  // Asks for the width of its buttons and never for more (no grow), and gives
+  // that width up FIRST — the shrink factor is what puts it ahead of the title
+  // in the queue, and giving width up is what makes the wrap above happen inside
+  // this column instead of dropping the column below the title.
+  //
+  // The number is a priority, not a ratio, and it is large on purpose. Flex
+  // shares a shortfall out in proportion to factor x base width, so it never
+  // charges one item nothing: at `1` the title paid most of a shortfall the
+  // buttons could have absorbed by taking a second line, and even at 999 it
+  // still paid THREE HUNDREDTHS OF A PIXEL — which is a whole extra line of
+  // heading, because a title one layout unit under its own width wraps. "Reports"
+  // became "Report / s" that way, and "Informes" survived 999 and would not have
+  // survived 99. 10000 puts the title's share below the 1/64px Blink lays out
+  // in, measured across eleven widths from 288px up.
+  //
+  // Not `0`, though: the actions must still yield, or a header too narrow for
+  // them pushes them out of the band instead. Their floor is left automatic, so
+  // they stop at their widest button — past that point there is nothing left to
+  // fold and the title yields what is left.
+  flex: 0 10000 auto;
+  // Belt and braces. The title's `flex-grow` already leaves nothing to
+  // distribute; this keeps the actions at the right end of the band even if a
+  // screen ever renders a header with no title text to push them there.
+  margin-left: auto;
+}
+
+// State the page reports, not something the user can do. Sits before the
+// actions and carries no button styling of its own — the pill inside is already
+// components/_pill.scss.
+.mhd-page-header__meta {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+// ── Print ────────────────────────────────────────────────────────────────────
+// The title and the data go on paper; the controls do not. This rule used to
+// live in modules/_reports.scss and applied to one screen, which was right about
+// what should happen and wrong about where it belonged.
+@media print {
+  .mhd-page-header__actions {
+    display: none;
+  }
+}

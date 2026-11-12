@@ -1,0 +1,388 @@
+// =============================================================================
+// components/_button.scss
+// The Button — mooDesk's one button component. Material Design 3 Expressive.
+//
+// SINGLE SOURCE OF TRUTH. Every button in the product is `.mhd-btn` plus one
+// variant and, optionally, one size. Nothing else may declare a button's
+// geometry — including the bridge in vendors/_moodle-buttons.scss, which reuses
+// the mixins below rather than restating any number.
+//
+// ── Where the numbers come from ──────────────────────────────────────────────
+// M3 Expressive's five button sizes are not in material-web's token set yet and
+// m3.material.io is client-rendered, so the values below come from Google's own
+// current implementations:
+//
+//   androidx.compose.material3.tokens.Button{XSmall,Small,Medium,Large,XLarge}Tokens
+//   material-components-android · SizeOverlay.Material3Expressive.Button.*
+//   material-web tokens/versions/v0_192 (typescale, shape, state)
+//
+//   size    height  icon  lead/trail  icon-label  outline  pressed shape  label
+//   xsmall   32px   20px     16px        8px        1px    corner-small   label-large
+//   small    40px   20px     16px        8px        1px    corner-small   label-large
+//   medium   56px   24px     24px        8px        1px    corner-medium  title-medium
+//   large    96px   32px     48px       12px        2px    corner-large   headline-small
+//   xlarge  136px   40px     64px       16px        3px    corner-large   headline-large
+//
+// Every size is corner-full (9999px) at rest. Small is the default, matching
+// Widget.Material3Expressive.Button, whose materialSizeOverlay is
+// SizeOverlay.Material3Expressive.Button.Small.
+//
+// Shape morph on press is an Expressive signature, not decoration: the rounded
+// container squares off to PressedContainerShape while held.
+//
+//   md.sys.shape.corner-small / medium / large ...... 8px / 12px / 16px
+//   md.sys.state.hover / focus / pressed ............ 0.08 / 0.12 / 0.12
+//   md.sys.typescale.label-large .................... 0.875rem / 1.25rem / 500 / 0.00625rem
+//   md.sys.typescale.title-medium ................... 1rem / 1.5rem / 500 / 0.009375rem
+//   md.sys.typescale.headline-small ................. 1.5rem / 2rem / 400 / 0
+//   md.sys.typescale.headline-large ................. 2rem / 2.5rem / 400 / 0
+//
+// dp maps to px: on the web M3's baseline density is 1dp = 1px.
+//
+// ── The contract ─────────────────────────────────────────────────────────────
+//   .mhd-btn                base geometry at the default size (small)
+//   .mhd-btn--<size>        xsmall | small | medium | large | xlarge
+//   .mhd-btn--<variant>     filled | tonal | outlined | text | elevated
+//                           (+ danger / outlined-danger, see below)
+//   .mhd-btn--icon          square, icon-only — a SHAPE, not a colour variant,
+//                           so it is worn alongside one (see below)
+//   .mhd-btn__icon          a leading or trailing icon slot, sized by the size
+//   .mhd-btn__label         the label slot, for buttons that truncate
+//
+// A screen picks a size. A screen never sets a height, padding, font-size,
+// line-height, weight, radius, gap or icon size — that is what put twenty-eight
+// different button spellings in this plugin in the first place.
+//
+// Colour tokens live in abstracts/_colors.scss — this file defines no raw hex.
+// =============================================================================
+
+@use 'sass:map';
+@use '../abstracts/colors' as c;
+@use '../abstracts/variables' as v;
+
+// ── M3 shape and state tokens ────────────────────────────────────────────────
+
+$corner-full:   9999px;   // md.sys.shape.corner-full
+$corner-small:  8px;      // md.sys.shape.corner-small
+$corner-medium: 12px;     // md.sys.shape.corner-medium
+$corner-large:  16px;     // md.sys.shape.corner-large
+
+$hover-opacity:   0.08;   // md.sys.state.hover-state-layer-opacity
+$focus-opacity:   0.12;   // md.sys.state.focus-state-layer-opacity
+$pressed-opacity: 0.12;   // md.sys.state.pressed-state-layer-opacity
+
+// M3 disabled: the label drops to 38% and the container to 12% of on-surface.
+$disabled-label-opacity:     0.38;
+$disabled-container-opacity: 0.12;
+
+// ── The five Expressive sizes ────────────────────────────────────────────────
+// One row per size, read by the mixin below. Adding a size means adding a row —
+// never a rule somewhere else.
+
+$sizes: (
+  'xsmall': (
+    height: 32px, icon: 20px, space: 16px, gap: 8px, outline: 1px,
+    pressed-shape: $corner-small,
+    font-size: 0.875rem, line-height: 1.25rem, weight: 500, tracking: 0.00625rem,
+  ),
+  'small': (
+    height: 40px, icon: 20px, space: 16px, gap: 8px, outline: 1px,
+    pressed-shape: $corner-small,
+    font-size: 0.875rem, line-height: 1.25rem, weight: 500, tracking: 0.00625rem,
+  ),
+  'medium': (
+    height: 56px, icon: 24px, space: 24px, gap: 8px, outline: 1px,
+    pressed-shape: $corner-medium,
+    font-size: 1rem, line-height: 1.5rem, weight: 500, tracking: 0.009375rem,
+  ),
+  'large': (
+    height: 96px, icon: 32px, space: 48px, gap: 12px, outline: 2px,
+    pressed-shape: $corner-large,
+    font-size: 1.5rem, line-height: 2rem, weight: 400, tracking: 0,
+  ),
+  'xlarge': (
+    height: 136px, icon: 40px, space: 64px, gap: 16px, outline: 3px,
+    pressed-shape: $corner-large,
+    font-size: 2rem, line-height: 2.5rem, weight: 400, tracking: 0,
+  ),
+);
+
+$default-size: 'small';
+
+// Emit one size's geometry. The only place these properties are ever written.
+@mixin mhd-button-size($name) {
+  $s: map.get($sizes, $name);
+
+  min-height: map.get($s, height);
+  padding: 0 map.get($s, space);
+  gap: map.get($s, gap);
+  border-width: map.get($s, outline);
+  font-size: map.get($s, font-size);
+  font-weight: map.get($s, weight);
+  line-height: map.get($s, line-height);
+  letter-spacing: map.get($s, tracking);
+
+  &:active {
+    border-radius: map.get($s, pressed-shape);
+  }
+
+  .mhd-btn__icon {
+    width: map.get($s, icon);
+    height: map.get($s, icon);
+    font-size: map.get($s, icon);
+  }
+}
+
+// Everything a button has regardless of size or colour. The bridge includes
+// this too, so Moodle's own buttons are the same object rather than a copy.
+@mixin mhd-button-base {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  isolation: isolate;
+  // md.comp.button min-width, less the horizontal spacing the container adds.
+  min-width: 64px;
+  border-style: solid;
+  border-color: transparent;
+  border-radius: $corner-full;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  // The shape morph is the whole point of the pressed state; it must be seen.
+  transition: border-radius 0.15s ease, background-color 0.15s ease,
+              box-shadow 0.15s ease;
+
+  @include mhd-button-size($default-size);
+
+  // ── State layer ────────────────────────────────────────────────────────────
+  // M3 paints hover/focus/pressed as a translucent layer of the label colour.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: currentcolor;
+    opacity: 0;
+    pointer-events: none;
+    // Behind the label, in front of the container. Without this the layer
+    // paints over the text and every hover, focus and press quietly costs the
+    // label 8-12% of its contrast. `isolation: isolate` on the element keeps
+    // the negative index inside this stacking context.
+    z-index: -1;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover::after { opacity: $hover-opacity; }
+
+  &:active::after { opacity: $pressed-opacity; }
+
+  // :focus-visible only — a mouse click should not leave a ring behind, but a
+  // keyboard user must always be able to see where they are.
+  &:focus-visible {
+    outline: 3px solid c.$mhd-color-focus;
+    outline-offset: 2px;
+
+    &::after { opacity: $focus-opacity; }
+  }
+
+  &:hover,
+  &:focus {
+    text-decoration: none;
+  }
+
+  &:disabled,
+  &[aria-disabled='true'],
+  &.disabled {
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: $disabled-label-opacity;
+
+    &::after { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &::after { transition: none; }
+  }
+}
+
+// The icon slot. Decorative by default — mark it aria-hidden in the markup
+// unless the icon is the only thing carrying the meaning.
+@mixin mhd-button-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  fill: currentcolor;
+}
+
+// ── Icon-only shape ──────────────────────────────────────────────────────────
+// A row of a table repeats its actions once per row. Spelled out in words that
+// is three labels per row and forty rows of the same three words; as icons it
+// is a column the eye reads once and then navigates by position.
+//
+// This is a SHAPE, not a colour: `.mhd-btn--icon` says square and label-less,
+// and the button still carries one of the variants below. That is also what
+// keeps button_markup_test's "every button carries a variant" rule honest.
+//
+// Square at the size's own height, so an icon button lines up with the labelled
+// buttons beside it by construction rather than by a number typed twice. M3
+// calls this the icon button's container and gives it the same height as the
+// common button at each size.
+//
+// THE MARKUP HAS TO HOLD UP ITS END. Nothing here can say what the button does
+// once the label is gone, so every icon-only button needs an `aria-label` and a
+// `title` — the first for anyone who cannot see the glyph, the second for
+// anyone who can see it and still cannot place it.
+@mixin mhd-button-icon-only($name) {
+  $s: map.get($sizes, $name);
+
+  width: map.get($s, height);
+  min-width: map.get($s, height);
+  padding: 0;
+  gap: 0;
+}
+
+// ── Colour variants ──────────────────────────────────────────────────────────
+// Background, label and border. Never a dimension.
+
+// The container is the interactive primary role, not the flat brand blue: the
+// state layer lays the label's own white over it at up to 12%, and the brand
+// value had no room to give — a pressed button measured 4.18:1. See
+// abstracts/_colors.scss.
+@mixin mhd-button-filled {
+  background-color: c.$mhd-color-primary-container;
+  color: c.$mhd-color-text-inverse;
+}
+
+@mixin mhd-button-tonal {
+  background-color: c.$mhd-color-primary-soft;
+  color: c.$mhd-color-primary-strong;
+}
+
+@mixin mhd-button-outlined {
+  background-color: transparent;
+  color: c.$mhd-color-text;
+  border-color: c.$mhd-color-border-strong;
+}
+
+// No container to darken, so the headroom comes from the label. `primary-strong`
+// is the role that already exists for brand text on a surface.
+@mixin mhd-button-text {
+  background-color: transparent;
+  color: c.$mhd-color-primary-strong;
+}
+
+@mixin mhd-button-elevated {
+  background-color: c.$mhd-color-surface;
+  color: c.$mhd-color-primary-strong;
+  box-shadow: v.$mhd-shadow-card;
+
+  &:hover { box-shadow: v.$mhd-shadow-card-hover; }
+}
+
+// M3's common buttons have no destructive variant — the spec leaves error
+// actions to the error colour role (md.sys.color.error). mooDesk deletes, merges
+// and revokes, so the role is spelled out here on the same geometry.
+@mixin mhd-button-danger {
+  background-color: c.$mhd-color-danger-container;
+  color: c.$mhd-color-text-inverse;
+}
+
+// The label carries the headroom; the outline keeps the resting red so the two
+// destructive variants still read as the same action.
+@mixin mhd-button-outlined-danger {
+  background-color: transparent;
+  color: c.$mhd-color-danger-strong;
+  border-color: c.$mhd-color-danger;
+}
+
+// ── The component ────────────────────────────────────────────────────────────
+
+.mhd-btn {
+  @include mhd-button-base;
+}
+
+.mhd-btn__icon {
+  @include mhd-button-icon;
+}
+
+.mhd-btn__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// The icon-only shape at the default size. Emitted before the per-size block
+// below so that `.mhd-btn--icon.mhd-btn--xsmall` — same specificity, written
+// later — wins. A media query adds no specificity and neither does a second
+// class; order is the whole argument. See the note in main.scss.
+.mhd-btn.mhd-btn--icon {
+  @include mhd-button-icon-only($default-size);
+}
+
+// Sizes. `small` is the default and is emitted by the base, but the explicit
+// class exists so a screen can say which size it means.
+@each $name, $spec in $sizes {
+  .mhd-btn.mhd-btn--#{$name} {
+    @include mhd-button-size($name);
+  }
+
+  .mhd-btn.mhd-btn--icon.mhd-btn--#{$name} {
+    @include mhd-button-icon-only($name);
+  }
+}
+
+// A finger is not a mouse pointer. The small icon button is a 40px container,
+// which clears WCAG 2.2's 24px target minimum but sits under the 44-48px that
+// both Apple and Material ask for on a touch screen — and a table's action
+// column puts three of them side by side, which is exactly where a near miss
+// hits the wrong one.
+//
+// So on a coarse pointer the TARGET grows and the button does not: a
+// transparent 48px patch centred on the container, which costs the layout
+// nothing and cannot be seen. Sized off the largest gap it has to close, and
+// applied only where the pointer is actually coarse, so a desktop row keeps its
+// exact hit area.
+//
+// `::before` because `::after` is the state layer. It sits behind the label for
+// the same reason the layer does, and takes no pointer events away from it.
+@media (pointer: coarse) {
+  .mhd-btn.mhd-btn--icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 48px);
+    height: max(100%, 48px);
+    transform: translate(-50%, -50%);
+    z-index: -1;
+  }
+}
+
+.mhd-btn.mhd-btn--filled          { @include mhd-button-filled; }
+.mhd-btn.mhd-btn--tonal           { @include mhd-button-tonal; }
+.mhd-btn.mhd-btn--outlined        { @include mhd-button-outlined; }
+.mhd-btn.mhd-btn--text            { @include mhd-button-text; }
+.mhd-btn.mhd-btn--elevated        { @include mhd-button-elevated; }
+.mhd-btn.mhd-btn--danger          { @include mhd-button-danger; }
+.mhd-btn.mhd-btn--outlined-danger { @include mhd-button-outlined-danger; }
+
+// Disabled containers lose their fill as well as their label. Applied after the
+// variants so it wins over whichever one the button carries.
+.mhd-btn {
+  &:disabled,
+  &[aria-disabled='true'],
+  &.disabled {
+    &.mhd-btn--filled,
+    &.mhd-btn--tonal,
+    &.mhd-btn--danger {
+      background-color: rgba(c.$mhd-color-text, $disabled-container-opacity);
+      color: c.$mhd-color-text;
+    }
+  }
+}

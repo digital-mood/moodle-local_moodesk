@@ -1,0 +1,291 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/ticket_detail
+
+    The ticket detail screen: header, conversation, management rail and composer.
+
+    One template, two mounts. view.php renders it as the canonical page
+    (`ispage`) and the ticket list renders the same markup inside an overlay
+    drawer (`isdrawer`) through the fragment callback in lib.php. The variant
+    swaps the breadcrumb for a close button and nothing else; everything below
+    the header is identical, which is the point — there is no second
+    implementation of the detail to keep in sync.
+
+    The drawer offers no way out to the page. A ticket is worked on where it was
+    opened: replying, noting, saving properties and fields all happen over
+    ajax.php and the panel stays up. view.php remains the canonical URL — the
+    deep link, what every notification and event points at, and the whole of the
+    no-JavaScript path — but it is no longer somewhere the interface sends
+    anyone.
+
+    Rendered by \local_moodesk\output\ticket_detail, which owns the context.
+
+    Context variables:
+      * ticketid        - Ticket numeric ID
+      * subject         - Ticket subject
+      * status/priority - Status and priority codes (CSS class suffix)
+      * statuslabel     - Localised status label
+      * prioritylabel   - Localised priority label
+      * requestername   - Requester full name (empty when unresolvable)
+      * hasrequester    - True when the requester name is shown in the meta line
+      * timecreated     - Formatted creation timestamp
+      * isdrawer/ispage - Which mount is rendering
+      * viewurl         - Canonical URL of this ticket (view.php?id=N)
+      * listurl         - URL back to the ticket list
+      * hasrail         - True when the management rail renders (:manage only)
+      * pluginsectionsfields[] - {html} what plugins add (hook ticket_detail_sections, fields slot)
+      * hasmergedfields - True when linked source fields render
+      * hascomposer     - True when the reply/note composer renders
+      * hastoggle       - True when the user can both reply and add notes
+      * composerheading - Label used when only one composer mode is available
+      * hasattach       - True when the composer accepts attachments
+      * attachrootid    - Unique DOM id for the attachments region. The ticket
+                          list also hosts the New ticket drawer's own region, so
+                          each has to be addressable on its own.
+      * attachpanelid   - Unique DOM id for the disclosed file panel
+      * attachconfig    - JSON the attachments module reads off the element:
+                          draft item id, endpoint, sesskey, picker options
+      * replyform       - Raw moodleform HTML for the reply/note form
+      * replyactionurl  - Where the rail's property forms and the composer post
+                          (view.php?id=N). Consumed by the sidebar partial.
+      * ajaxurl         - ajax.php, where the drawer sends the same forms.
+      * closelabel      - Accessible label for the drawer close button
+                          (KB-05: the feature, knowledge base on, viewer may edit KB)
+                          (KB-05). The partial's own variables are listed in
+      * haspluginsections{banner,sidebar,composer} / pluginsections{banner,sidebar,composer}[] -
+                          Sections plugins add ({html}); see the
+                          ticket_detail_sections hook. Sidebar sections render
+                          here only when there is no rail.
+
+    Example context (json):
+    {
+      "ticketid": 42,
+      "subject": "Cannot access my course",
+      "status": 1,
+      "statuslabel": "Open",
+      "priority": 2,
+      "prioritylabel": "High",
+      "requestername": "Marta Ruiz",
+      "hasrequester": true,
+      "timecreated": "8 May 2026, 10:30",
+      "isdrawer": false,
+      "ispage": true,
+      "viewurl": "/local/moodesk/view.php?id=42",
+      "listurl": "/local/moodesk/index.php",
+      "replyactionurl": "/local/moodesk/view.php?id=42",
+      "hasrail": true,
+      "hascomposer": true,
+      "hastoggle": true,
+      "thread": []
+    }
+}}
+<div class="mhd-detail" data-region="mhd-detail" data-ticketid="{{ticketid}}">
+
+  {{! ── Header: identity of the ticket ── }}
+  <header class="mhd-detail__header">
+    <div class="mhd-detail__heading">
+      <div class="mhd-detail__pills" id="mhd-ticket-badges">
+        <span class="mhd-pill mhd-pill--status-{{status}}" id="mhd-status-badge">{{statuslabel}}</span>
+        <span class="mhd-pill mhd-pill--priority-{{priority}}" id="mhd-priority-badge">{{prioritylabel}}</span>
+        {{! Agents only, and only for a ticket an email opened while sender
+            verification was on. Absence therefore means "not from email, or not
+            evaluated" — never "verified", which is why the verified case is
+            shown too rather than left implicit. }}
+        {{#pluginsectionsbadges}}{{{html}}}{{/pluginsectionsbadges}}
+      </div>
+      <h2 class="mhd-detail__title" id="mhd-detail-title">{{subject}}</h2>
+      <p class="mhd-detail__meta">
+        <span class="mhd-detail__meta-id">#{{ticketid}}</span>
+        {{#hasrequester}}<span class="mhd-detail__meta-sep" aria-hidden="true">&middot;</span>
+        <span class="mhd-detail__meta-requester">{{requestername}}</span>{{/hasrequester}}
+        <span class="mhd-detail__meta-sep" aria-hidden="true">&middot;</span>
+        <span class="mhd-detail__meta-created">{{timecreated}}</span>
+      </p>
+    </div>
+    {{#pluginsectionsheader}}{{{html}}}{{/pluginsectionsheader}}
+    {{#isdrawer}}
+    <button type="button"
+            class="mhd-drawer__close"
+            data-action="mhd-drawer-close"
+            aria-label="{{closelabel}}">
+      <svg class="mhd-drawer__close-icon" aria-hidden="true" focusable="false">
+        <use href="#mhd-icon-close"></use>
+      </svg>
+    </button>
+    {{/isdrawer}}
+  </header>
+
+  {{! ── Sub-bar: where this screen sits ──
+      The page only. The drawer is where a ticket is worked on now — every
+      action inside it stays inside it — so it has nothing to say here, and an
+      empty strip under the header is not worth its own line. }}
+  {{#ispage}}
+  <div class="mhd-detail__subbar">
+    <a href="{{listurl}}" class="mhd-detail__back">&larr; {{#str}} page_list_heading, local_moodesk {{/str}}</a>
+  </div>
+  {{/ispage}}
+
+  {{! ── Section switch ──
+      Narrow viewports have no room for two columns, so the conversation and the
+      rail become two tabs instead of one long scroll. Rendered hidden and left
+      that way without JavaScript: the fallback is both sections stacked, which
+      is what this screen already did.
+
+      Only where there IS a rail. A requester sees a single column, and a tab
+      strip offering one tab is noise. }}
+  {{#hasrail}}
+  <div class="mhd-detail__tabs" data-region="mhd-detail-tabs" hidden
+       aria-label="{{#str}} detail_tabs_label, local_moodesk {{/str}}">
+    <button type="button" class="mhd-detail__tab" data-action="mhd-detail-tab" data-panel="conversation">
+      {{#str}} detail_tab_conversation, local_moodesk {{/str}}
+    </button>
+    <button type="button" class="mhd-detail__tab" data-action="mhd-detail-tab" data-panel="details">
+      {{#str}} detail_tab_details, local_moodesk {{/str}}
+    </button>
+  </div>
+  {{/hasrail}}
+
+  {{! ── Workspace: conversation + management rail ──
+      In the drawer these are two independent scrollports side by side and this
+      element is the flexible space between the sub-bar and the composer; on the
+      page it stays a plain grid that flows with the shell's own scrolling. }}
+  <div class="mhd-detail__body">
+
+    {{! tabindex, because this region scrolls and holds no focusable content of
+        its own: without it a keyboard-only user cannot reach the top of a long
+        thread. The rail opposite needs no equivalent — its selects and buttons
+        are focusable, so it scrolls as focus moves through them. }}
+    <div class="mhd-detail__main"
+         role="region"
+         tabindex="0"
+         data-panel="conversation"
+         aria-label="{{#str}} detail_conversation_label, local_moodesk {{/str}}">
+
+      {{! Notices plugins add above the conversation (hook ticket_detail_sections). }}
+      {{#haspluginsectionsbanner}}
+      <div class="mhd-detail__plugin-banners" data-region="mhd-plugin-sections-banner">
+        {{#pluginsectionsbanner}}{{{html}}}{{/pluginsectionsbanner}}
+      </div>
+      {{/haspluginsectionsbanner}}
+
+      {{> local_moodesk/ticket_detail_thread }}
+
+      {{! Custom fields and the fields carried across a merge live in the rail,
+          which is where the ticket's properties are managed — see the sidebar
+          partial. Without a rail there is nowhere else for them to go, and this
+          is the branch a requester takes: no management surface renders for
+          them at all, and what they get here is the read-only view of their own
+          ticket's fields. The partials are the same two either way; only where
+          they are mounted changes. }}
+      {{^hasrail}}
+      {{#pluginsectionsfields}}{{{html}}}{{/pluginsectionsfields}}
+
+      {{! Plugin cards: in the rail when there is one, here when there is not. }}
+      {{#haspluginsectionssidebar}}
+      {{#pluginsectionssidebar}}{{{html}}}{{/pluginsectionssidebar}}
+      {{/haspluginsectionssidebar}}
+      {{/hasrail}}
+
+    </div>
+
+    {{#hasrail}}
+    <aside class="mhd-detail__rail" data-panel="details"
+           aria-label="{{#str}} detail_rail_label, local_moodesk {{/str}}">
+      {{> local_moodesk/ticket_detail_sidebar }}
+    </aside>
+    {{/hasrail}}
+
+  </div>
+
+  {{! ── Composer ──
+      The form is moodleform's own markup, rendered verbatim and restyled, so
+      validation, CSRF, draft areas, notifications and the SLA side effects of a
+      reply are the existing flow. It posts to view.php, which stays the POST
+      target from both mounts and the whole of the no-JavaScript path; inside
+      the drawer, reply_submit.js sends that same form to ajax.php instead, so
+      the panel survives the send. }}
+  {{#hascomposer}}
+  <footer class="mhd-detail__composer">
+    <div class="mhd-composer" id="mhd-reply-editor"
+         data-mhd-ajax="{{ajaxurl}}"
+         data-mhd-toast-failed="{{#str}} detail_save_failed, local_moodesk {{/str}}">
+      {{#hastoggle}}
+      <div class="mhd-composer__tabs mhd-reply-toggle" role="group"
+           aria-label="{{#str}} reply_toggle_label, local_moodesk {{/str}}">
+        <button type="button" class="mhd-composer__tab mhd-reply-tab active" data-replytype="0">
+          {{#str}} reply_add_public, local_moodesk {{/str}}
+        </button>
+        <button type="button" class="mhd-composer__tab mhd-reply-tab" data-replytype="1">
+          {{#str}} reply_add_note, local_moodesk {{/str}}
+        </button>
+      </div>
+      {{/hastoggle}}
+      {{^hastoggle}}
+      <div class="mhd-composer__heading">{{composerheading}}</div>
+      {{/hastoggle}}
+      {{! ── Attachments ──
+          The toggle and the file panel sit outside the form on purpose: neither
+          submits anything. What the submit needs is the draft item id, and the
+          form carries that in a hidden field. "Add file" drives Moodle's file
+          picker over that same draft area, and the list is drawn from what the
+          server reports it holds (ADR: docs/reply-composer-attachments.md).
+
+          They come before the form in source order so that tabbing runs
+          attach → files → message → send, which is the order the composer is
+          used in; the grid places them where the design puts them. The panel
+          renders empty and hidden: a reply with nothing attached costs the
+          conversation no height. With uploads disabled site-wide, none of this
+          renders at all. }}
+      {{#hasattach}}
+      <div class="mhd-composer__attachments" id="{{attachrootid}}"
+           data-region="mhd-composer-attachments" data-config="{{attachconfig}}">
+        <div class="mhd-composer__attach-cell">
+          <button type="button" class="mhd-composer__attach" data-action="mhd-toggle-attachments"
+                  aria-expanded="false" aria-controls="{{attachpanelid}}"
+                  title="{{#str}} attachment_add, local_moodesk {{/str}}"
+                  aria-label="{{#str}} attachment_add, local_moodesk {{/str}}">
+            <svg class="mhd-composer__attach-icon" aria-hidden="true" focusable="false">
+              <use href="#mhd-icon-paperclip"></use>
+            </svg>
+            <span class="mhd-composer__attach-count" data-region="mhd-attach-count" hidden></span>
+          </button>
+        </div>
+        <div class="mhd-composer__panel" id="{{attachpanelid}}" data-region="mhd-attach-panel" hidden>
+          <div data-region="mhd-attach-list"></div>
+          {{! The same control the New ticket form renders, so the same button:
+              outlined at xsmall, inside a panel that is already open. }}
+          <button type="button" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-composer__addfile"
+                  data-action="mhd-attach-file">
+            {{#str}} attachment_add_file, local_moodesk {{/str}}
+          </button>
+          <p class="mhd-composer__panel-note">{{#str}} attachment_panel_note, local_moodesk, {{maxfiles}} {{/str}}</p>
+        </div>
+      </div>
+      {{/hasattach}}
+      {{! Composer tools plugins add (hook ticket_detail_sections). }}
+      {{#haspluginsectionscomposer}}
+      {{#pluginsectionscomposer}}{{{html}}}{{/pluginsectionscomposer}}
+      {{/haspluginsectionscomposer}}
+      <div class="mhd-composer__body">
+        {{{replyform}}}
+      </div>
+    </div>
+  </footer>
+  {{/hascomposer}}
+
+</div>

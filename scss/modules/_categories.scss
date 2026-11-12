@@ -1,0 +1,21 @@
+// =============================================================================
+// modules/_categories.scss
+// Ticket category administration — the list page.
+//
+// Two controls per row, so the row becomes a card below 992px: the product-wide
+// rule. Everything about how that card looks is the pattern's.
+//
+// What is this screen's own is that a category has no identity — no face, no
+// mark. Its row is titled by `.mhd-cell--name` rather than by an entity cell,
+// which means the pattern's metadata indent has nothing to align to and
+// correctly does not apply: there is no figure to align past.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+@use '../components/datatable'  as dt;
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-admin-categories .mhd-datatable-surface {
+    @include dt.mhd-datatable-as-cards;
+  }
+}

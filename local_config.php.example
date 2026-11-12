@@ -1,0 +1,65 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle. If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Local development overrides for moodesk — TEMPLATE.
+ *
+ * HOW TO USE:
+ *   1. Copy this file to local_config.php (same directory):
+ *        cp local_config.php.example local_config.php
+ *   2. Uncomment and edit the defines below to override behavior locally.
+ *   3. Make sure Moodle's config.php loads this file. Add the following block
+ *      to {moodle_root}/config.php, AFTER $CFG->dirroot is defined and BEFORE
+ *      require_once($CFG->dirroot . '/lib/setup.php'):
+ *
+ *        $_moodesk_local = $CFG->dirroot . '/local/moodesk/local_config.php';
+ *        if (file_exists($_moodesk_local)) {
+ *            require_once($_moodesk_local);
+ *        }
+ *        unset($_moodesk_local);
+ *
+ * IMPORTANT:
+ *   - local_config.php is gitignored. Never commit it.
+ *   - This file (local_config.php.example) is the only one that ships in the repo.
+ *   - Client installs do not have either file — production reads edition / config
+ *     from the standard plugin settings (`Site administration → Local plugins
+ *     → moodesk`).
+ *
+ * @package   local_moodesk
+ * @copyright 2026 Digital Mood
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+defined('MOODLE_INTERNAL') || die();
+
+// -----------------------------------------------------------------------------
+// Edition override
+// -----------------------------------------------------------------------------
+//
+// Restricts the active edition for this installation, to check a lower edition
+// than the licence grants. Licence contract v2 (decision O-2): it can only
+// LOWER the edition. The edition is min(this value, the licensed tier), and
+// Starter without a valid licence — it never raises a site above its licence.
+// To work on Pro or Enterprise locally, install a licence the site trusts.
+// (Only inside a PHPUnit run is it honoured unclamped, as the CI legs' edition
+// switch; see edition_service::get_edition().)
+//
+// Valid values: 'starter', 'pro', 'enterprise'.
+//
+// Comment out the define to let the licence decide.
+// -----------------------------------------------------------------------------
+
+// define('moodesk_LOCAL_EDITION', 'pro');

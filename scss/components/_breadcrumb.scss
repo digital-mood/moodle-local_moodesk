@@ -1,0 +1,70 @@
+// =============================================================================
+// components/_breadcrumb.scss
+//
+// The Breadcrumb — where a deep screen sits in the product.
+//
+// The shell draws no navbar (Moodle's embedded layout), so this is the
+// product's own trail: a quiet line of links above the page header, the
+// current page last and unlinked. It follows the WAI-ARIA APG pattern in the
+// markup (templates/breadcrumb.mustache); this file only draws it.
+//
+// The separator is generated content, not a character in the list: it is
+// punctuation, it must not be read, and it must not reach the language files.
+//
+// Nothing here is about the knowledge base. The first screen deep enough to
+// need a trail happened to be an article; the next one will be something else.
+//
+// Colour tokens live in abstracts/_colors.scss, dimensions in
+// abstracts/_variables.scss — this file defines neither.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors'    as c;
+
+.mhd-breadcrumb {
+  margin-bottom: v.$mhd-space-sm;
+  font-size: v.$mhd-font-size-sm;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mhd-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  // A long article title as the current step wraps rather than pushing the
+  // trail off the edge; it never truncates a link, which is a destination.
+  min-width: 0;
+
+  & + &::before {
+    content: '›';
+    color: c.$mhd-color-border-strong;
+  }
+}
+
+// Two classes deep on purpose: base/_app-reset.scss colours every `.moodesk-app a`
+// at that weight, and a trail is quieter than a link in prose.
+.mhd-breadcrumb .mhd-breadcrumb__link {
+  color: c.$mhd-color-text-muted;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    color: c.$mhd-color-primary;
+    text-decoration: underline;
+  }
+}
+
+.mhd-breadcrumb__current {
+  color: c.$mhd-color-text;
+  font-weight: v.$mhd-font-weight-medium;
+}

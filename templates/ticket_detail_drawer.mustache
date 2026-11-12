@@ -1,0 +1,77 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/ticket_detail_drawer
+
+    Right-anchored overlay panel that hosts the ticket detail on the ticket list.
+
+    The panel ships empty: its content is the ticket_detail fragment
+    (lib.php → local_moodesk_output_fragment_ticket_detail), loaded when a row is
+    opened and injected with core/templates so that Moodle's editor and file
+    manager initialise properly. Rows stay real links to view.php?id=N, which is
+    the canonical page and the no-JavaScript path.
+
+    Context variables:
+      * contextid   - Context id the fragment is requested against
+      * label       - Accessible label for the dialog before content arrives
+      * loadinglabel- Text shown while the fragment is in flight
+      * errorlabel  - Text shown when the fragment could not be loaded
+      * fullpagelabel - Label of the escape hatch on the error state
+      * closelabel  - Label of the dismiss button on the error state
+      * listurl     - Fallback href for the escape hatch until a ticket is known
+      * unsavedconfirm - Prompt shown when closing with an unsent reply
+
+    Example context (json):
+    {
+      "contextid": 1,
+      "label": "Ticket detail",
+      "loadinglabel": "Loading ticket…",
+      "errorlabel": "This ticket could not be loaded.",
+      "fullpagelabel": "Open full page",
+      "closelabel": "Close",
+      "listurl": "/local/moodesk/index.php",
+      "unsavedconfirm": "You have an unsent message. Discard it and close?"
+    }
+}}
+<div class="mhd-detail-drawer-mount"
+     data-region="mhd-detail-drawer"
+     data-contextid="{{contextid}}"
+     data-unsaved-confirm="{{unsavedconfirm}}">
+    <div class="mhd-drawer__backdrop" data-region="mhd-drawer-backdrop"></div>
+    {{! A modal dialog, not complementary content: `aside` cannot carry
+        role="dialog" or aria-modal and the validator rejects both. }}
+    <div class="mhd-detail-drawer"
+         data-region="mhd-drawer-panel"
+         role="dialog"
+         aria-modal="true"
+         aria-label="{{label}}"
+         tabindex="-1">
+        <div class="mhd-detail-drawer__status" data-region="mhd-detail-loading" hidden>
+            <span class="mhd-detail-drawer__spinner" aria-hidden="true"></span>
+            <span>{{loadinglabel}}</span>
+        </div>
+        {{! A failed load is a dead end unless it offers a way on: the ticket's
+            own page always works, and the panel can always be dismissed. }}
+        <div class="mhd-detail-drawer__status" data-region="mhd-detail-error" hidden>
+            <span>{{errorlabel}}</span>
+            <a href="{{listurl}}" data-region="mhd-detail-error-link">{{fullpagelabel}}</a>
+            <button type="button" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall"
+                    data-action="mhd-drawer-close">{{closelabel}}</button>
+        </div>
+        <div class="mhd-detail-drawer__content" data-region="mhd-detail-content"></div>
+    </div>
+</div>

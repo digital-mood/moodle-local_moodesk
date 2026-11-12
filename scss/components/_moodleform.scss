@@ -1,0 +1,197 @@
+// =============================================================================
+// components/_moodleform.scss
+//
+// The one description of what a Moodle form looks like inside mooDesk.
+// No output — mixins only.
+//
+// Every form the product shows is Moodle's own `moodleform`, rendered verbatim
+// and RESTYLED (ADR §4 — never replaced), so validation, CSRF, draft areas and
+// redirects stay Moodle's. What each surface used to own privately was the
+// RESET: the handful of rules that turn Boost's horizontal `col-md-3` /
+// `col-md-9` field row into a stacked label-over-control field.
+//
+// That reset existed three times — in the standalone form card, in the new
+// ticket drawer, and in the reply composer — and the copies had drifted. The
+// card's copy never zeroed the grid gutter, so every control sat 12px past its
+// own label; it never handled the label addon, so the required marker drifted
+// to the far edge of a full-width cell. The drawer's copy did both. A screen
+// got the correct behaviour according to which copy it happened to inherit.
+//
+// This is the drawer's copy, which was the complete one, with the two values
+// the surfaces legitimately disagree on passed in.
+//
+// The reply composer is deliberately NOT a consumer. It is not a form layout —
+// it dissolves the form with `display: contents` and lays the fields on a grid
+// of its own, hides the label, and pins a send button to the message box. It
+// shares the markup, not the shape.
+//
+// ── WHAT BOOSTRAP PUTS IN THE WAY ────────────────────────────────────────────
+//
+// Boost's field row (lib/form/templates/element-template.mustache) is:
+//
+//   <div class="mb-3 row fitem">
+//     <div class="col-md-3 col-form-label d-flex pb-0 pe-md-0">
+//       <label class="d-inline word-break">…</label>
+//       <div class="form-label-addon d-flex …">…</div>
+//     </div>
+//     <div class="col-md-9 d-flex flex-wrap align-items-start felement">…</div>
+//   </div>
+//
+// Three things there are load-bearing for this file. The `col-md-*` pair is a
+// Bootstrap grid that flips at 768px — a breakpoint neither the product nor
+// this stylesheet chose. `.word-break` is `word-break: break-word !important`,
+// which is why a long label in a narrow column breaks mid-word rather than
+// wrapping. And `pb-0` / `pe-md-0` are spacing utilities, emitted with
+// `!important` by Bootstrap: undoing them requires matching it.
+//
+// NOTE ON !important: every use below is scoped to a consumer and exists purely
+// to neutralise a utility class Moodle puts on its own markup — never to
+// outrank a product style. See main.scss on why an ordering argument is never
+// won this way.
+//
+// Selectors that reach into Moodle internals (`.fitem`, `.felement`,
+// `.form-label-addon`, `[class*="col-md-9"]`) are best-effort across Moodle
+// 4.5–5.2. Every one of them degrades to the stock Boost look rather than to a
+// broken layout: a level a given version does not emit simply matches nothing.
+// =============================================================================
+
+/// Stop the form and its fieldsets from being boxes.
+///
+/// The surface around the form — a card, a drawer panel — is the frame. Moodle's
+/// own fieldset chrome would draw a second one inside it.
+///
+/// `fieldset` is deliberately a descendant, not a child: moodleform nests a bare
+/// `<fieldset class="w-100 m-0 p-0 border-0">` inside groups and the filemanager,
+/// and the shared `.moodesk-app .mform fieldset` rule would otherwise paint those
+/// with the card surface too.
+///
+/// @param {Length} $padding [0] Inner padding for the `.mform` itself. A card
+///   carries its own padding here so the action bar can bleed back out to the
+///   card's edges; a drawer pads its scroll body instead and passes 0.
+@mixin mhd-moodleform-reset($padding: 0) {
+  .mform {
+    max-width: none;
+    margin: 0;
+    padding: $padding;
+  }
+
+  .mform fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+}
+
+/// Turn Boost's horizontal field row into a stacked field: label on top,
+/// control at full width.
+///
+/// This is what removes the 768px Bootstrap flip from the product's forms. The
+/// label cell and the control cell both go to 100%, so there is no narrow column
+/// left for a long label to break inside, and the layout is the same shape at
+/// every width — which is what makes a container-driven grid (see
+/// `mhd-moodleform-field-grid`) the only thing that decides column count.
+///
+/// @param {Length} $label-size Font size for the label cell.
+/// @param {Length} $gap [var(--mhd-space-md, 16px)] Space below each field.
+@mixin mhd-moodleform-stacked($label-size, $gap: var(--mhd-space-md, 16px)) {
+  .fitem {
+    display: block;
+    margin: 0 0 $gap;
+  }
+
+  // The label cell: full width, left aligned, and a flex row holding the label
+  // text next to Moodle's label addon (the required marker and the help icon)
+  // rather than letting the addon drift to the far edge of a full-width cell.
+  .fitem > .col-form-label,
+  .fitem > [class*="fitemtitle"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+    padding: 0 0 var(--mhd-space-xs, 4px) !important; // pb-0 / pe-md-0.
+    justify-content: flex-start;
+    gap: var(--mhd-space-xs, 4px);
+    text-align: left;
+    font-size: $label-size;
+    font-weight: var(--mhd-font-weight-medium, 500);
+    color: var(--mhd-color-text, #1f2937);
+  }
+
+  .fitem > .col-form-label label,
+  .fitem > [class*="fitemtitle"] label {
+    flex: 0 1 auto;
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+  }
+
+  .fitem > .col-form-label .form-label-addon,
+  .fitem > [class*="fitemtitle"] .form-label-addon {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  // The grid gutter would inset every control 12px past its own label.
+  .fitem > .felement,
+  .fitem > [class*="col-md-9"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  // The control cell is a flex row in Boost; every control (and the validation
+  // feedback under it) takes the full width instead of sizing to its `cols` /
+  // `size` attribute. Editors nest their markup one or two levels deeper, which
+  // is why this targets the cell's direct children rather than the inputs.
+  .fitem > .felement > *,
+  .fitem > [class*="col-md-9"] > * {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/// Lay a run of fields out in as many columns as the CONTAINER can hold.
+///
+/// The column count is decided by `auto-fit` + `minmax` — that is, by the width
+/// the surface actually has, not by the width of the viewport. This matters
+/// because the two stopped agreeing once the app shell existed: at a 834px
+/// viewport the shell shows a 256px rail and leaves the form 482px, while at a
+/// 768px viewport the rail is off-canvas and the form gets 672px. A viewport
+/// breakpoint would have to pick one of those and be wrong about the other.
+/// Measuring the container is right about both, and adds no breakpoint to the
+/// product's scale.
+///
+/// Two columns therefore appear when the container can hold them at their real
+/// minimum, and one column is what a container narrower than that gets — before
+/// the labels start compressing, not after.
+///
+/// `min-width: 0` on the items is not decoration: a grid item's automatic
+/// minimum size is its content, so without it a long label or a wide control
+/// pushes the track past its track size and the page scrolls sideways.
+///
+/// Neither is `min(#{'$min'}, 100%)`. A bare `minmax($min, 1fr)` makes the track at
+/// least $min wide even when the CONTAINER is narrower than that — one column
+/// cannot become half a column — so on a 320px phone the 340px track ran 61px
+/// past the card, which clips it (the card is `overflow: hidden`) with no
+/// scrollbar to reveal what was cut. Measured, not theorised. Capping the
+/// minimum at 100% of the container lets the last column shrink with it, and the
+/// `100%` here resolves against the grid container, which is the box we mean.
+///
+/// @param {Length} $min Narrowest a column may be before the grid drops one.
+@mixin mhd-moodleform-field-grid($min) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min($min, 100%), 1fr));
+  column-gap: var(--mhd-space-lg, 24px);
+
+  // Row spacing is the field's own bottom margin, set by the stacked mixin.
+  // A row-gap here would add to it rather than replace it.
+  row-gap: 0;
+
+  > .fitem {
+    min-width: 0;
+  }
+}

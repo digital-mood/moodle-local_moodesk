@@ -1,0 +1,17 @@
+// =============================================================================
+// base/_globals.scss
+// Base styles scoped to the Help Desk plugin.
+// Applied to all pages; structural and typographic defaults only.
+// =============================================================================
+
+// Ensure all plugin elements use border-box sizing.
+// (Bootstrap sets this globally; this is a safety net for custom elements.)
+.mhd-ticket-list,
+.mhd-ticket-detail,
+.mhd-dashboard {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}

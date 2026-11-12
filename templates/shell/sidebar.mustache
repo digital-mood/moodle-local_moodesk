@@ -1,0 +1,137 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/shell/sidebar
+
+    Application-shell sidebar, laid out as three vertical bands:
+
+        brand      fixed at the top, intrinsic height
+        nav        takes the space that is left, and is the ONLY band that
+                   scrolls (see layout/_app-sidebar.scss)
+        footer     pinned at the bottom: "Return to Moodle" + Settings
+
+    Navigation is provided by navigation_service::get_shell_items() via
+    app_shell, grouped into sections (Operation / Administration / System).
+
+    Context variables:
+      * navlabel       - Accessible label for the <nav> region
+      * brand          - {url, name, tagline}
+      * navgroups[]    - {key, label, items[]} where items[] are
+                         {key, label, url, icon, active, external}
+      * footeritems[]  - same item shape as a group's items (e.g. Settings).
+                         MAY BE EMPTY: Settings is capability-gated, whereas the
+                         footer element itself always renders because "Return to
+                         Moodle" lives in it and is available to every user.
+      * returnurl      - URL back to Moodle
+      * returnlabel    - "Return to Moodle"
+      * closedrawerlabel - Accessible name for the drawer's close control. Shared
+                         with the backdrop in local_moodesk/shell/app_shell: they
+                         are two ways to perform the one action.
+
+    Example context (json):
+    {
+      "navlabel": "mooDesk navigation",
+      "brand": {
+        "url": "/local/moodesk/index.php",
+        "name": "mooDesk",
+        "tagline": "Support desk"
+      },
+      "navgroups": [
+        {
+          "key": "operation",
+          "label": "Operation",
+          "items": [
+            {"key": "dashboard", "label": "Dashboard", "url": "/local/moodesk/dashboard.php", "icon": "dashboard", "active": true, "external": false},
+            {"key": "tickets", "label": "Tickets", "url": "/local/moodesk/index.php", "icon": "tickets", "active": false, "external": false}
+          ]
+        }
+      ],
+      "footeritems": [
+        {"key": "settings", "label": "Settings", "url": "/admin/settings.php", "icon": "settings", "active": false, "external": true}
+      ],
+      "returnurl": "/my/",
+      "returnlabel": "Return to Moodle",
+      "closedrawerlabel": "Close navigation"
+    }
+}}
+<aside id="moodesk-app-sidebar" class="moodesk-app__sidebar" aria-label="{{navlabel}}">
+
+    <a class="moodesk-app__brand" href="{{brand.url}}">
+        <span class="moodesk-app__brand-mark" aria-hidden="true">
+            <svg class="moodesk-app__brand-glyph" aria-hidden="true" focusable="false"><use href="#mhd-icon-logo"></use></svg>
+        </span>
+        <span class="moodesk-app__brand-text">
+            <span class="moodesk-app__brand-name"><span class="moodesk-app__brand-name-moo">moo</span><span class="moodesk-app__brand-name-desk">Desk</span></span>
+            <span class="moodesk-app__brand-tagline">{{brand.tagline}}</span>
+        </span>
+    </a>
+
+    {{! Closing the drawer with a pointer. The open drawer is a fixed panel over
+        the left of the topbar, so the toggle that opened it is underneath it and
+        no click or tap reaches it — the keyboard still does, because the toggle
+        keeps the focus. This is the pointer's way out, and it exists for nothing
+        else: outside an open drawer it is display:none, which takes it out of
+        the accessibility tree rather than leaving a second, redundant "close" for
+        a screen reader to find while the sidebar is a rail.
+
+        A sibling of the brand rather than a child of it: the brand is an <a>, and
+        a button inside a link is not valid HTML. }}
+    <button type="button" class="moodesk-app__drawer-close" data-region="moodesk-drawer-close" aria-label="{{closedrawerlabel}}">
+        <svg class="moodesk-app__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-close"></use></svg>
+    </button>
+
+    <nav class="moodesk-app__nav">
+        {{#navgroups}}
+        <div class="moodesk-app__nav-group" data-group="{{key}}">
+            <p class="moodesk-app__nav-group-label" aria-hidden="true">{{label}}</p>
+            <ul class="moodesk-app__nav-list" aria-label="{{label}}">
+                {{#items}}
+                    <li class="moodesk-app__nav-item{{#active}} is-active{{/active}}{{#activetrail}} is-trail{{/activetrail}}">
+                        <a class="moodesk-app__nav-link" href="{{url}}"{{#active}} aria-current="page"{{/active}}>
+                            <svg class="moodesk-app__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-{{icon}}"></use></svg>
+                            <span class="moodesk-app__nav-text">{{label}}</span>
+                        </a>
+                    </li>
+                {{/items}}
+            </ul>
+        </div>
+        {{/navgroups}}
+    </nav>
+
+    {{! One list, not two: "Return to Moodle" and Settings are the same band of
+        actions, so a single <ul> gives them the list's own row spacing and
+        keeps their order fixed whether or not Settings is present. }}
+    <div class="moodesk-app__sidebar-footer">
+        <ul class="moodesk-app__nav-list">
+            <li class="moodesk-app__nav-item">
+                <a class="moodesk-app__nav-link" href="{{returnurl}}">
+                    <svg class="moodesk-app__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-return"></use></svg>
+                    <span class="moodesk-app__nav-text">{{returnlabel}}</span>
+                </a>
+            </li>
+            {{#footeritems}}
+                <li class="moodesk-app__nav-item{{#active}} is-active{{/active}}">
+                    <a class="moodesk-app__nav-link" href="{{url}}"{{#active}} aria-current="page"{{/active}}>
+                        <svg class="moodesk-app__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-{{icon}}"></use></svg>
+                        <span class="moodesk-app__nav-text">{{label}}</span>
+                    </a>
+                </li>
+            {{/footeritems}}
+        </ul>
+    </div>
+
+</aside>

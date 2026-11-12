@@ -1,0 +1,92 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/page_header_action
+
+    One control in a page header's action row.
+
+    Never included directly by a screen — page_header.mustache renders it once
+    per action, and the SLOT it is rendered from supplies `variant`. A screen
+    that reaches for this partial itself is a screen choosing its own emphasis,
+    which is exactly what the component exists to prevent.
+
+    The two forms are spelled out separately rather than sharing a body: a link
+    and a button are different elements, and Mustache has no conditional tag
+    name. They are four lines each and they sit next to each other, which is a
+    better trade than a third partial for the inside of a button.
+
+    An icon-only action keeps its label. It moves from the element's text to its
+    accessible name and its tooltip, so nothing is lost to a screen reader or to
+    a pointer that hovers — only to the eye, which has the glyph.
+
+    Context variables:
+      * label         - Localised label. Visible text, or the accessible name when icononly.
+      * url           - Destination. Absent for a button.
+      * hasurl        - True to render <a>, false to render a <button>
+      * form          - Id of a form on the page the button submits, or absent
+      * hasform       - True to render <button type="submit" form="…">, false for type="button"
+      * icon          - Sprite id without the `mhd-icon-` prefix
+      * hasicon       - True when an icon is present
+      * icononly      - True to hide the label and use it as the accessible name
+      * variant       - Button colour variant: 'filled' (primary) or 'outlined' (secondary),
+                        or their danger counterparts 'danger' / 'outlined-danger'
+      * attributes    - [{name, value}] extra HTML attributes (data-action, target, rel)
+      * hasattributes - True when there are extra attributes
+
+    Example context (json):
+    {
+      "label": "New department",
+      "url": "/local/moodesk/department_edit.php",
+      "hasurl": true,
+      "icon": "plus",
+      "hasicon": true,
+      "icononly": true,
+      "variant": "filled",
+      "attributes": [],
+      "hasattributes": false
+    }
+}}
+{{#hasurl}}
+<a href="{{url}}"
+   class="mhd-btn mhd-btn--{{variant}}{{#icononly}} mhd-btn--icon{{/icononly}}"
+   {{#icononly}}aria-label="{{label}}" title="{{label}}"{{/icononly}}
+   {{#attributes}}{{name}}="{{value}}" {{/attributes}}>
+  {{#hasicon}}
+  <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+    <use href="#mhd-icon-{{icon}}"></use>
+  </svg>
+  {{/hasicon}}
+  {{^icononly}}{{label}}{{/icononly}}
+</a>
+{{/hasurl}}
+{{^hasurl}}
+{{! A button. `type="button"` for the JS-driven kind; `type="submit"` pointing at
+    a form elsewhere on the page — by id, through the HTML `form` attribute — for
+    a state change the screen spelled out as a <form> in its own template. The
+    header carries the control, the screen keeps the request. }}
+<button {{#hasform}}type="submit" form="{{form}}"{{/hasform}}{{^hasform}}type="button"{{/hasform}}
+        class="mhd-btn mhd-btn--{{variant}}{{#icononly}} mhd-btn--icon{{/icononly}}"
+        {{#icononly}}aria-label="{{label}}" title="{{label}}"{{/icononly}}
+        {{#attributes}}{{name}}="{{value}}" {{/attributes}}>
+  {{#hasicon}}
+  <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+    <use href="#mhd-icon-{{icon}}"></use>
+  </svg>
+  {{/hasicon}}
+  {{^icononly}}{{label}}{{/icononly}}
+</button>
+{{/hasurl}}

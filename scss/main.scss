@@ -1,0 +1,194 @@
+// =============================================================================
+// main.scss — Help Desk plugin entry point.
+//
+// Import order:
+//   1. Abstracts  — tokens, mixins, functions (no output)
+//   2. Base       — globals, animations
+//   3. Layout     — structural zones
+//   4. Components — shared UI atoms
+//   5. Modules    — page-level feature styles
+//   6. Utilities  — override helpers
+//   7. Vendors    — third-party overrides
+//   8. States     — dynamic state overrides
+//
+// Per CLAUDE.md, partials are added only when they have real content.
+// Compile: npm run scss
+//
+// ── ORDER INSIDE A FILE ──────────────────────────────────────────────────────
+//
+// The list above is the order between files. Within one file the rule is: base
+// declarations first, breakpoint blocks after, and never a property declared
+// below a breakpoint block that already specialised it for the same selector.
+//
+// A media query adds NO specificity. A base rule and a breakpoint rule for the
+// same selector weigh the same, so the one written later wins whatever the
+// viewport. Three bugs reached users through that gap before it was written
+// down:
+//
+//   layout/_filters.scss had a two-column step for `.mhd-filter-item` and, 130
+//   lines further on, `.mhd-filter-item { flex: 0 0 auto }`. The later rule won
+//   at every width; the status filter never took its half of the row.
+//
+//   The same file paired `width: calc(100vw - 32px)` with `max-width: 100%` on
+//   the date panel. Percentages resolve against the CONTAINING BLOCK — a 99px
+//   cell here, not the viewport — so the cap undid the width and clipped the
+//   inputs. Know what a percentage measures before pairing it with vw.
+//
+//   layout/_page-header.scss stacked the header on phones for a button that
+//   measurement showed fits beside the title. Measure before you special-case.
+//
+// When a base value has to survive a breakpoint, move the base rule above the
+// breakpoint blocks or specialise it inside each one. Never reach for
+// `!important` or a longer selector to win an ordering argument: that leaves
+// two rules fighting and hides which one is the intent.
+//
+// Verify a responsive change by measuring computed styles at the boundaries
+// (575/576, 767/768/769, 991/992, 1199/1200), not by looking at one width.
+// =============================================================================
+
+// ── 1. Abstracts ─────────────────────────────────────────────────────────────
+// No CSS output — variables, colors, and mixins only.
+
+@use 'abstracts/variables';
+@use 'abstracts/colors';
+@use 'abstracts/spacing';
+@use 'abstracts/typography';
+@use 'abstracts/breakpoints';
+@use 'abstracts/mixins';
+@use 'abstracts/zindex';
+
+// ── 2. Base ──────────────────────────────────────────────────────────────────
+
+// The breakpoint scale as custom properties. Not a visual token set — it exists
+// so the AMD modules can read the widths the stylesheet reflows on instead of
+// repeating them. See the file for why it lands on :root.
+@use 'base/breakpoint-tokens';
+@use 'base/globals';
+
+// app-tokens + app-reset are scoped under `.moodesk-app` and are therefore
+// inert until the application shell renders that wrapper (phase F2).
+@use 'base/app-tokens';
+@use 'base/app-reset';
+@use 'base/animations';
+
+// ── 3. Layout ────────────────────────────────────────────────────────────────
+// Application-shell layout (app-shell/app-sidebar/app-topbar) is scoped under
+// `.moodesk-app` and is inert until the shell renders that wrapper (ui_mode = app).
+
+@use 'layout/page-header';
+@use 'layout/sidebar';
+// The band of controls above a data table. Before filters, which takes its row
+// geometry from the mixin this declares.
+@use 'layout/table-toolbar';
+@use 'layout/filters';
+@use 'layout/app-shell';
+@use 'layout/app-sidebar';
+@use 'layout/app-topbar';
+
+// ── 4. Components ────────────────────────────────────────────────────────────
+
+// The Pill is the single source of truth for every status label, badge and
+// informational chip in the product — base dimensions plus colour variants.
+// It replaced components/badges, components/status-pill and
+// components/priority-pill, which between them had let six screens grow their
+// own pill sizing.
+@use 'components/pill';
+// The Button is the single source of truth for every button in the product —
+// M3 Expressive geometry, five sizes, colour variants. Its mixins are also what
+// vendors/_moodle-buttons.scss hands to the buttons Moodle itself renders.
+@use 'components/button';
+@use 'components/cards';
+// KPI cards and the horizontal CSS bar chart (dashboard, Reports, knowledge
+// base analytics). Components since KB-07; they were module rules before.
+@use 'components/kpi';
+@use 'components/bars';
+// The Data Table is the single source of truth for every table in the product —
+// surface, header, row, cell, hover, empty state, and the one rule for what a
+// table does on a phone. It replaced two incompatible table families, plus a
+// third that had stopped being used and was still shipping. All eighteen tables
+// wear it; components/_tables.scss is gone.
+@use 'components/datatable';
+// A thing the product manages, drawn as one object: figure, name, one fact.
+// Shared by every entity table — agents, departments, teams, requesters.
+// The avatar frame. Before entity-cell and layout/_app-topbar, both of which
+// include its mixin.
+@use 'components/avatar';
+@use 'components/entity-cell';
+@use 'components/tabs';
+@use 'components/empty-state';
+// Rendered rich text, read as a document — the body of a knowledge base
+// article. The editor that produced it gets no rules from this plugin; the
+// result gets this. Applied only there for now, written so it need not be.
+@use 'components/prose';
+// A prominent search field with its own submit — the primary control of a page
+// whose job is finding something. Not the toolbar's filter input.
+@use 'components/search-box';
+// Where a deep screen sits: the product's own trail, since the embedded layout
+// draws no navbar.
+@use 'components/breadcrumb';
+@use 'components/attachments';
+// Writing a message and attaching files to it: the message box, the attach
+// button and the draft's file list. Distinct from components/attachments, which
+// is the files already saved on a ticket.
+@use 'components/composer';
+// Up to five article links between the category row and the description of
+// the New Ticket form, filled from the knowledge base as the subject is typed.
+@use 'components/kb-suggestions';
+// The language layer of the knowledge base (KB-06, Pro): the badge on a card
+// or a result row, the notice and the switcher on the article page, the
+// editors' translations panel.
+@use 'components/kb-language';
+// "Was this article helpful?" at the foot of a published article (KB-07, Pro):
+// the question, the two buttons and the pressed answer.
+// No output — the mixins that describe what a moodleform looks like inside
+// mooDesk. Both form surfaces below include them, so it is declared before
+// either of them can.
+@use 'components/moodleform';
+@use 'components/forms-controls';
+@use 'components/toast';
+// After forms-controls: the drawers restyle the same moodleform markup and must
+// win over the shared rules. drawer-base carries only mixins plus the shared
+// scroll lock, so its position in the cascade does not matter.
+@use 'components/drawer-base';
+@use 'components/drawer';
+@use 'components/drawer-detail';
+
+// ── 5. Modules ───────────────────────────────────────────────────────────────
+
+@use 'modules/ticket-list';
+@use 'modules/ticket-detail';
+@use 'modules/dashboard';
+@use 'modules/departments';
+@use 'modules/agents';
+@use 'modules/categories';
+@use 'modules/custom-fields';
+@use 'modules/agent-add';
+@use 'modules/sla';
+@use 'modules/health';
+@use 'modules/kb';
+@use 'modules/knowledge';
+
+// ── 6. Utilities ─────────────────────────────────────────────────────────────
+
+@use 'utilities/spacing' as util-spacing;
+@use 'utilities/display';
+@use 'utilities/visibility';
+@use 'utilities/text';
+@use 'utilities/alignment';
+
+// ── 7. Vendors ───────────────────────────────────────────────────────────────
+
+@use 'vendors/moodle-overrides';
+// The bridge for markup we do not write: moodleform's Save and Cancel. It
+// reuses components/button's mixins and declares no dimension of its own.
+@use 'vendors/moodle-buttons';
+// One property on core's paging bar: a non-chromatic marker for the current
+// page. Everything else about it stays Bootstrap's.
+@use 'vendors/moodle-pagination';
+
+// ── 8. States ────────────────────────────────────────────────────────────────
+
+@use 'states/status';
+@use 'states/priority';
+@use 'states/loading';
+@use 'states/disabled';

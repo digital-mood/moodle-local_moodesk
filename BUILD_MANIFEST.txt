@@ -1,0 +1,5 @@
+local_moodesk build manifest
+release: 3.0.3
+git_sha: 9bfff44
+built_at: 2026-11-11T17:58:48Z
+built_by: runner@runnervmlby3q

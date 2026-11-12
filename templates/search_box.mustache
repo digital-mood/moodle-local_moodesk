@@ -1,0 +1,72 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/search_box
+
+    The Search Box — a prominent search field with its own submit.
+
+    Distinct from the toolbar's filter input (layout/_filters.scss) on purpose:
+    that one narrows a table the user is already looking at; this one IS the
+    page's primary action — "type what is wrong". Introduced by the knowledge
+    base landing, written for reuse: nothing here knows what is being searched.
+
+    One <form role="search">, one text input with an accessible name, one
+    submit button with a visible label. An optional hint renders under the
+    field and is wired to it with aria-describedby, so it is read when focus
+    returns to the field after a submit that could not search.
+
+    Context variables:
+      * action        - URL the form submits to (GET)
+      * name          - Name of the query parameter
+      * value         - Current query, or ""
+      * label         - Accessible name of the field (not visible)
+      * placeholder   - Hint inside the empty field
+      * buttonlabel   - Visible label of the submit button
+      * hint          - Optional text under the field, or absent
+      * hintid        - Id for the hint element (required when hint is present)
+      * hiddenfields  - Optional [{name, value}] carried through the submit
+
+    Example context (json):
+    {
+      "action": "/local/moodesk/kb.php",
+      "name": "q",
+      "value": "password reset",
+      "label": "Search the knowledge base",
+      "placeholder": "Search the knowledge base…",
+      "buttonlabel": "Search",
+      "hint": "Type at least 3 characters to search.",
+      "hintid": "mhd-search-hint",
+      "hiddenfields": []
+    }
+}}
+<form class="mhd-search-box" role="search" method="get" action="{{action}}">
+  <div class="mhd-search-box__row">
+    <svg class="mhd-search-box__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="11" cy="11" r="7"/>
+      <path d="M20 20l-3.5-3.5"/>
+    </svg>
+    <input type="search" class="mhd-search-box__input" name="{{name}}" value="{{value}}"
+           placeholder="{{placeholder}}" aria-label="{{label}}" autocomplete="off"
+           {{#hint}}aria-describedby="{{hintid}}"{{/hint}}>
+    {{#hiddenfields}}<input type="hidden" name="{{name}}" value="{{value}}">{{/hiddenfields}}
+    <button type="submit" class="mhd-btn mhd-btn--filled">{{buttonlabel}}</button>
+  </div>
+  {{#hint}}
+  <p class="mhd-search-box__hint" id="{{hintid}}">{{hint}}</p>
+  {{/hint}}
+</form>

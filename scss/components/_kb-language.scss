@@ -1,0 +1,31 @@
+// =============================================================================
+// components/_kb-language.scss
+// Knowledge base — everything that says which language an article is in
+// (KB-06, Pro): the badge on a card or a result row, the notice on the article
+// page, the reader's switcher, the editors' translations panel.
+//
+// One partial because they are one idea — "this is not the language you read
+// in, and here is the way to yours" — and one rule holds them all: the
+// language layer is the exception marker. A row in the reader's own language
+// carries none of it, so nothing here competes with the text on the common
+// path.
+//
+// The badge is the product's outline pill with the code as its text and the
+// language's name for screen readers; the notice is the product's status
+// alert; the switcher and the panel are links, pills, a select and a button —
+// no component of their own, only how they sit on a line and how they stack
+// on a phone.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+
+// ── Badge ────────────────────────────────────────────────────────────────────
+// `.mhd-pill.mhd-pill--outline` does the drawing; this keeps a code from
+// wrapping ("PT-BR" is one token) and lines it up with the rest of a meta line.
+
+.mhd-kb-lang-badge {
+  white-space: nowrap;
+  vertical-align: baseline;
+}

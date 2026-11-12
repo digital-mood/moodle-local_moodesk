@@ -1,0 +1,93 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/kb_suggestions
+
+    The "Suggested articles" block of the New Ticket form (KB-04).
+
+    Rendered once by new_ticket_drawer and placed by submit_ticket_form as an
+    html element between the category / department row and the description,
+    so the drawer and submit.php get it in the same place. Server-side it is
+    the heading, an empty body and a live region; local_moodesk/kb_suggestions
+    fills the body as the subject is typed, from local_moodesk_search_kb_articles.
+
+    Everything the module needs to know is on the root element: the ids of the
+    fields it listens to, the minimum length, the debounce, and the sentences
+    it puts in the live region. Nothing here decides what is shown — the
+    endpoint and the service do.
+
+    Context variables:
+      * rootid        - Id of the block; the heading is "{rootid}-title" and the
+                        hint for the subject field "{rootid}-hint"
+      * subjectid     - Id of the subject input to listen to
+      * categoryname  - Name of the category field in the same form as the
+                        subject (a select, or a hidden input when the site has
+                        a single category — which carries no id)
+      * minlength     - Shortest subject that triggers a request
+      * debounce      - Milliseconds of quiet before a request
+      * heading       - "Suggested articles"
+      * intro         - Short sentence under the heading, shown with results
+      * subjecthint   - Visually hidden sentence the module attaches to the
+                        subject field with aria-describedby
+      * updating      - Status text while a newer request is in flight
+      * strloading    - Live-region sentence while loading (past the delay)
+      * strnone       - Live-region sentence when nothing matched
+      * strerror      - Text shown when the request failed
+      * strresults    - Live-region sentence for N results ("{$a}" placeholder)
+      * strresultsone - Live-region sentence for one result
+
+    Example context (json):
+    {
+      "rootid": "mhd-kb-suggest-64f1",
+      "subjectid": "id_subject",
+      "categoryname": "categoryid",
+      "minlength": 3,
+      "debounce": 300,
+      "heading": "Suggested articles",
+      "intro": "These articles may already answer your question.",
+      "subjecthint": "Suggested articles appear below the category as you type.",
+      "updating": "Updating…",
+      "strloading": "Searching the knowledge base…",
+      "strnone": "No matching articles.",
+      "strerror": "Suggestions are unavailable right now.",
+      "strresults": "{$a} suggested articles",
+      "strresultsone": "1 suggested article"
+    }
+}}
+<section class="mhd-kb-suggest is-idle"
+         id="{{rootid}}"
+         data-region="mhd-kb-suggest"
+         data-subject-id="{{subjectid}}"
+         data-category-name="{{categoryname}}"
+         data-min-length="{{minlength}}"
+         data-debounce="{{debounce}}"
+         data-str-loading="{{strloading}}"
+         data-str-none="{{strnone}}"
+         data-str-error="{{strerror}}"
+         data-str-results="{{strresults}}"
+         data-str-results-one="{{strresultsone}}"
+         aria-labelledby="{{rootid}}-title">
+    <div class="mhd-kb-suggest__head">
+        <h3 class="mhd-kb-suggest__title" id="{{rootid}}-title">{{heading}}</h3>
+        <span class="mhd-kb-suggest__status" data-region="mhd-kb-suggest-status" aria-hidden="true">{{updating}}</span>
+    </div>
+    <p class="mhd-kb-suggest__intro">{{intro}}</p>
+    <p class="sr-only" id="{{rootid}}-hint">{{subjecthint}}</p>
+    <div class="mhd-kb-suggest__body" data-region="mhd-kb-suggest-body"></div>
+    <p class="mhd-kb-suggest__error" data-region="mhd-kb-suggest-error">{{strerror}}</p>
+    <div class="sr-only" aria-live="polite" aria-atomic="true" data-region="mhd-kb-suggest-live"></div>
+</section>

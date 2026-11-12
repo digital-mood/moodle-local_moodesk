@@ -1,0 +1,24 @@
+// =============================================================================
+// modules/_custom-fields.scss
+// Custom field administration — the list page.
+//
+// The widest of the configuration tables: six columns and a set of actions. Two
+// of those controls put it in the card tier below 992px.
+//
+// Like Categories, a field definition has no identity, so the row is titled by
+// `.mhd-cell--name` and there is no figure for the metadata to indent past.
+//
+// Four metadata values, each on a line of its own — the pattern's default. They
+// are deliberately NOT paired up two to a line the way Departments pairs its
+// two: with four, pairing produces a block that reads as a small grid, and the
+// eye stops being able to tell which label owns which value.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+@use '../components/datatable'  as dt;
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-admin-custom-fields .mhd-datatable-surface {
+    @include dt.mhd-datatable-as-cards;
+  }
+}

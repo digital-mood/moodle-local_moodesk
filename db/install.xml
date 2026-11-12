@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/moodesk/db" VERSION="20260821"
+    COMMENT="mooDesk schema. Every table and field carries its own COMMENT; how the tables relate, and why, is DEVELOPER.md section Database schema. XML comments are not used here: the XMLDB editor drops them on save, COMMENT attributes survive."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+
+  <TABLES>
+
+    <TABLE NAME="local_moodesk_department" COMMENT="Help desk departments, which act as queues: the unassigned tickets in a department are visible to every agent who is a member of it. Phase 3+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="name"         TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="description"  TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="isactive"     TYPE="int"  LENGTH="1"   NOTNULL="true" DEFAULT="1" SEQUENCE="false"
+                                   COMMENT="1=active, 0=archived (soft delete)."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_isactive" UNIQUE="false" FIELDS="isactive"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_dept_member" COMMENT="Agent-to-department membership, one row per pair. Drives both the assignment dropdown for a ticket and which tickets an agent sees in the Department view. Phase 3+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="departmentid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid"       TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Agent user ID. Must hold :agent capability to be assignable."/>
+        <FIELD NAME="timecreated"  TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"           TYPE="primary"  FIELDS="id"/>
+        <KEY NAME="fk_departmentid"   TYPE="foreign"  FIELDS="departmentid"
+             REFTABLE="local_moodesk_department" REFFIELDS="id"/>
+        <KEY NAME="uq_dept_user"      TYPE="unique"   FIELDS="departmentid, userid"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_userid" UNIQUE="false" FIELDS="userid"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_category" COMMENT="Ticket categories. parentid supports hierarchy and is populated, though the UI renders a flat list. Archiving is soft (visible=0) so foreign keys stay intact. The General seed row is created by db/install.php, not by this schema. Phase 3 adds departmentid.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="parentid"     TYPE="int"  LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Nullable. Sub-category parent reference. Null for root categories."/>
+        <FIELD NAME="departmentid" TYPE="int"  LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Phase 3: optional link to a department. Null = applies to all departments."/>
+        <FIELD NAME="name"         TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="description"  TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="sortorder"    TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="visible"      TYPE="int"  LENGTH="1"  NOTNULL="true" DEFAULT="1" SEQUENCE="false"
+                                   COMMENT="0=archived (soft delete, preserves FK integrity), 1=active."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="0 for system-seeded records."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_visible_sortorder" UNIQUE="false" FIELDS="visible, sortorder"/>
+        <INDEX NAME="ix_departmentid"      UNIQUE="false" FIELDS="departmentid"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_ticket" COMMENT="Help desk tickets. The central entity. Status transitions are enforced by the service layer state machine, not by the schema.">
+      <FIELDS>
+        <FIELD NAME="id"                  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+
+        <FIELD NAME="courseid"            TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                          COMMENT="Null for site-level tickets. Set for course-scoped tickets."/>
+        <FIELD NAME="contextid"           TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                          COMMENT="Moodle context ID snapshot. Write-once at creation. Not used for capability checks in Phase 1."/>
+        <FIELD NAME="coursename_snapshot" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"
+                                          COMMENT="Course fullname at creation time. Survives course deletion."/>
+
+        <FIELD NAME="userid"    TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                COMMENT="The requester: whose problem is this. Immutable after creation."/>
+        <FIELD NAME="createdby" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                COMMENT="Who created the record. May differ from userid when an agent creates on behalf of a user."/>
+        <FIELD NAME="assigneeid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                 COMMENT="Currently assigned agent. Null if unassigned."/>
+
+        <FIELD NAME="categoryid"   TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Nullable at DB level. Service layer always sets a value (default category fallback)."/>
+        <FIELD NAME="departmentid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Phase 3: department/queue this ticket belongs to. Null = globally visible to all agents."/>
+
+        <FIELD NAME="subject" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+
+        <FIELD NAME="status" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                             COMMENT="0=new, 1=open, 2=pending, 3=on_hold, 4=resolved, 5=closed. Transitions enforced by service layer state machine."/>
+        <FIELD NAME="priority" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false"
+                               COMMENT="0=low, 1=normal, 2=high, 3=urgent."/>
+        <FIELD NAME="source" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                             COMMENT="0=web (Phase 1 only), 1=email (Phase 2), 2=api (Phase 2)."/>
+
+        <FIELD NAME="timecreated"       TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"      TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timefirstresponse" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                        COMMENT="Unix timestamp of first agent public reply. Null until first response."/>
+        <FIELD NAME="timeresolved"      TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                        COMMENT="Timestamp when status transitioned to resolved."/>
+        <FIELD NAME="timeclosed"        TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                        COMMENT="Timestamp when status transitioned to closed."/>
+
+        <FIELD NAME="sla_breached" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="Phase 2 SLA enforcement flag. Always 0 in Phase 1-3."/>
+
+        <FIELD NAME="sla_paused_seconds" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                         COMMENT="Total seconds this ticket has spent in status=pending across all closed pause intervals. Added to the resolution deadline by sla_service. Never includes the interval currently open — see sla_paused_since."/>
+        <FIELD NAME="sla_paused_since"    TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                          COMMENT="Unix timestamp when the currently open pause started, i.e. when the ticket entered status=pending. NULL means the ticket is not paused right now. Closing a pause folds the elapsed time into sla_paused_seconds and sets this back to NULL."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Last user to modify this record."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"       TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_categoryid" TYPE="foreign" FIELDS="categoryid"
+             REFTABLE="local_moodesk_category" REFFIELDS="id"/>
+        <KEY NAME="fk_deptid"     TYPE="foreign" FIELDS="departmentid"
+             REFTABLE="local_moodesk_department" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_status_timecreated"   UNIQUE="false" FIELDS="status, timecreated"/>
+        <INDEX NAME="ix_userid_status"        UNIQUE="false" FIELDS="userid, status"/>
+        <INDEX NAME="ix_assigneeid_status"    UNIQUE="false" FIELDS="assigneeid, status"/>
+        <INDEX NAME="ix_departmentid_status"  UNIQUE="false" FIELDS="departmentid, status"
+                                              COMMENT="Supports VIEW_DEPARTMENT agent workspace queries at volume."/>
+        <INDEX NAME="ix_courseid" UNIQUE="false" FIELDS="courseid"/>
+        <INDEX NAME="ix_timemodified" UNIQUE="false" FIELDS="timemodified"
+                                      COMMENT="Supports the dashboard's recent-activity panel, which orders the whole table by last touch and takes the top few rows."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_reply" COMMENT="Ticket thread: public replies, internal notes, and system event entries. Attachments hang off a reply through the reply_attachment file area keyed by reply id, including the opening message of a ticket, which is stored as the first reply.">
+      <FIELDS>
+        <FIELD NAME="id"            TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="ticketid"      TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid"        TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Author. For type=system_event this is the actor who triggered the event."/>
+        <FIELD NAME="message"       TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="messageformat" TYPE="int"  LENGTH="2"  NOTNULL="true" DEFAULT="1" SEQUENCE="false"
+                                    COMMENT="Moodle FORMAT_* constant. 1=FORMAT_HTML."/>
+        <FIELD NAME="type"          TYPE="int"  LENGTH="1"  NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                    COMMENT="0=public_reply, 1=internal_note, 2=system_event."/>
+        <FIELD NAME="timecreated"   TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"  TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified"  TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"      TYPE="primary"  FIELDS="id"/>
+        <KEY NAME="fk_ticketid"  TYPE="foreign"  FIELDS="ticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_ticketid_timecreated" UNIQUE="false" FIELDS="ticketid, timecreated"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_ticket_history" COMMENT="Immutable audit log of all ticket state changes. Insert-only.">
+      <FIELDS>
+        <FIELD NAME="id"        TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="ticketid"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid"    TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                COMMENT="Actor who caused the change. 0 for system-initiated actions."/>
+        <FIELD NAME="action"    TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"
+                                COMMENT="String constant from ticket_history domain class."/>
+        <FIELD NAME="oldvalue"  TYPE="text" NOTNULL="false" SEQUENCE="false"
+                                COMMENT="JSON-encoded previous value. Null for creation events."/>
+        <FIELD NAME="newvalue"  TYPE="text" NOTNULL="false" SEQUENCE="false"
+                                COMMENT="JSON-encoded new value. Null for deletion events."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"     TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_ticketid" TYPE="foreign" FIELDS="ticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_ticketid_timecreated" UNIQUE="false" FIELDS="ticketid, timecreated"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_incident" COMMENT="Operational incidents: one row per CLASS of absorbed failure, not per occurrence. Identified by fingerprint (unique), counted by occurrences, and bounded in time by timefirstseen/timelastseen. Whether an incident is a CURRENT problem is derived from timelastseen against the configured active window, never stored; status records only what an administrator decided. Written by incident_service, which never throws. Operational observability (OBS-01).">
+      <FIELDS>
+        <FIELD NAME="id"               TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="fingerprint"      TYPE="char" LENGTH="40"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="sha1(source|code|scopekey). Unique: at most one row per class of failure, so a reappearance updates rather than inserts."/>
+        <FIELD NAME="source"           TYPE="char" LENGTH="30"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Closed set: observer, webhook, email_ingestion, scheduled_task."/>
+        <FIELD NAME="code"             TYPE="char" LENGTH="60"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Stable source.operation.condition identifier, e.g. observer.ticket_created.notify_failed. Never derived from an exception message."/>
+        <FIELD NAME="severity"         TYPE="char" LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="warning, error or critical."/>
+        <FIELD NAME="message"          TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Short human-readable summary, truncated and passed through the secret redactor before it lands here."/>
+        <FIELD NAME="context"          TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="JSON object restricted to the allowlist in the incident domain class. Never holds credentials, email content or ticket content."/>
+        <FIELD NAME="occurrences"      TYPE="int"  LENGTH="10"  NOTNULL="true" DEFAULT="1" SEQUENCE="false"
+                                       COMMENT="How many times this class of failure has been recorded since timefirstseen."/>
+        <FIELD NAME="status"           TYPE="char" LENGTH="15"  NOTNULL="true" DEFAULT="open" SEQUENCE="false"
+                                       COMMENT="Administrative intent: open, acknowledged (silences alerts) or resolved. Not a statement about whether the failure is still happening."/>
+        <FIELD NAME="timefirstseen"    TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Unix timestamp of the first occurrence in this row's lifetime."/>
+        <FIELD NAME="timelastseen"     TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Unix timestamp of the most recent occurrence. Drives the derived health state."/>
+        <FIELD NAME="timelastalerted"  TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Unix timestamp of the last alert sent for this incident; NULL when never alerted. Written by the alerting unit (OBS-03); the column ships here so the table takes one migration, not two."/>
+        <FIELD NAME="severityalerted"  TYPE="char" LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Severity this incident was last alerted at; NULL when never alerted. An escalation past this value alerts again immediately, which is how a critical bypasses the cooldown without alerting on every cron tick."/>
+        <FIELD NAME="acknowledgedby"   TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="userid of the administrator who acknowledged it; 0 once anonymised by a privacy erasure request."/>
+        <FIELD NAME="timeacknowledged" TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Unix timestamp of the acknowledgement."/>
+        <FIELD NAME="resolvedby"       TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="userid of the administrator who resolved it; 0 once anonymised by a privacy erasure request."/>
+        <FIELD NAME="timeresolved"     TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Unix timestamp of the resolution."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_fingerprint"      UNIQUE="true"  FIELDS="fingerprint"/>
+        <INDEX NAME="ix_status_lastseen"  UNIQUE="false" FIELDS="status, timelastseen"/>
+        <INDEX NAME="ix_source"           UNIQUE="false" FIELDS="source"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_kb_article" COMMENT="Knowledge base articles. One row per article in one language; rows sharing a groupid are translations of each other, one per language (KB-06). Body is stored as typed and cleaned on render, never on write.">
+      <FIELDS>
+        <FIELD NAME="id"            TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="groupid"       TYPE="int"  LENGTH="10"  NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                    COMMENT="Identity shared by every language variant of one article. Equals the row's own id for the canonical (source-language) row; the repository sets it on insert, so no persisted row keeps the default 0. When the canonical row is deleted the service re-points the survivors to the lowest surviving id."/>
+        <FIELD NAME="lang"          TYPE="char" LENGTH="30"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Moodle language code of this variant (en, es, pt_br). Unique within a group."/>
+        <FIELD NAME="categoryid"    TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                    COMMENT="Optional local_moodesk_category the article is filed under. Shares the ticket taxonomy by product decision (2026-09-12); treated as an opaque reference by the KB code."/>
+        <FIELD NAME="title"         TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="body"          TYPE="text"              NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Article HTML exactly as authored (PARAM_RAW). Rendered through format_text() without noclean or trusttext; see db/access.php."/>
+        <FIELD NAME="bodyformat"    TYPE="int"  LENGTH="2"   NOTNULL="true" DEFAULT="1" SEQUENCE="false"
+                                    COMMENT="Moodle FORMAT_* constant for body. FORMAT_HTML."/>
+        <FIELD NAME="searchtext"    TYPE="text"              NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Derived from body on every write: tags stripped, entities decoded, whitespace collapsed, lower-cased. What search matches against, so markup never does."/>
+        <FIELD NAME="status"        TYPE="int"  LENGTH="1"   NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                    COMMENT="0 draft, 1 published, 2 archived. Constants on the kb_article domain class."/>
+        <FIELD NAME="audience"      TYPE="int"  LENGTH="1"   NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                    COMMENT="0 everyone who may view the knowledge base, 1 agents only. An access rule, decided by kb_access_policy."/>
+        <FIELD NAME="createdby"     TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="userid of the author; 0 once anonymised by a privacy erasure request."/>
+        <FIELD NAME="usermodified"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="userid of the last editor; 0 once anonymised by a privacy erasure request."/>
+        <FIELD NAME="timecreated"   TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timepublished" TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                    COMMENT="Unix timestamp of the first publication; NULL while never published. Not reset by unpublishing."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"       TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_categoryid" TYPE="foreign" FIELDS="categoryid" REFTABLE="local_moodesk_category" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_status_lang_category" UNIQUE="false" FIELDS="status, lang, categoryid"/>
+        <INDEX NAME="ux_groupid_lang"         UNIQUE="true"  FIELDS="groupid, lang" COMMENT="One translation per language per group (KB-06). Also serves every lookup by groupid, so no separate groupid index."/>
+        <INDEX NAME="ix_createdby"            UNIQUE="false" FIELDS="createdby"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

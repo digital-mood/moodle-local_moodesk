@@ -1,0 +1,33 @@
+// =============================================================================
+// abstracts/_zindex.scss
+// Z-index scale — single source of truth for stacking context.
+// No output — import-only file.
+// =============================================================================
+
+// Row overlay link (stretched <a> that makes a row clickable).
+$mhd-z-row-overlay: 0;
+
+// Interactive children inside a clickable row (avatars, checkboxes).
+$mhd-z-row-interactive: 1;
+
+// Sticky SLA band at the top of the ticket detail's management rail. Only has
+// to outrank the cards scrolling beneath it inside that one scrollport.
+$mhd-z-rail-band: 2;
+
+// Sticky toolbar (bulk actions bar).
+$mhd-z-toolbar: 10;
+
+// Dropdowns, popovers.
+$mhd-z-dropdown: 100;
+
+// Modals.
+$mhd-z-modal: 200;
+
+// Overlay drawer (new ticket). Above the shell's off-canvas navigation (50/60)
+// and below Moodle's own dialogues (file picker, ~600+), so the file picker
+// still opens on top of the drawer.
+$mhd-z-drawer-backdrop: 200;
+$mhd-z-drawer:          201;
+
+// Notifications / toasts.
+$mhd-z-toast: 300;

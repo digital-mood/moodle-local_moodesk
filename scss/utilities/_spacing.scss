@@ -1,0 +1,26 @@
+// =============================================================================
+// utilities/_spacing.scss
+// Spacing utility classes using the product token scale.
+// Prefer these over hardcoded margin/padding values in component rules.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+// Margin top.
+.mhd-mt-xs { margin-top: v.$mhd-space-xs; }
+.mhd-mt-sm { margin-top: v.$mhd-space-sm; }
+.mhd-mt-md { margin-top: v.$mhd-space-md; }
+.mhd-mt-lg { margin-top: v.$mhd-space-lg; }
+.mhd-mt-xl { margin-top: v.$mhd-space-xl; }
+
+// Margin bottom.
+.mhd-mb-xs { margin-bottom: v.$mhd-space-xs; }
+.mhd-mb-sm { margin-bottom: v.$mhd-space-sm; }
+.mhd-mb-md { margin-bottom: v.$mhd-space-md; }
+.mhd-mb-lg { margin-bottom: v.$mhd-space-lg; }
+.mhd-mb-xl { margin-bottom: v.$mhd-space-xl; }
+
+// Gap (used on flex/grid containers).
+.mhd-gap-xs { gap: v.$mhd-space-xs; }
+.mhd-gap-sm { gap: v.$mhd-space-sm; }
+.mhd-gap-md { gap: v.$mhd-space-md; }

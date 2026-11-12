@@ -1,0 +1,54 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/breadcrumb
+
+    The Breadcrumb — where a deep screen sits in the product.
+
+    The shell renders on Moodle's `embedded` layout, which draws no navbar, so
+    until the knowledge base's article page nothing in mooDesk was more than
+    one step from its sidebar entry and nothing needed one. It follows the
+    WAI-ARIA Authoring Practices pattern: a <nav> with an accessible name, an
+    ordered list, links for every step but the last, which is the current
+    page and plain text with aria-current. Separators are drawn by CSS so
+    they are not read aloud.
+
+    Context variables:
+      * label   - Accessible name of the navigation ("Breadcrumb")
+      * items[] - {label, url, current}. `current` is true on the last item only,
+                  which then renders as text rather than a link.
+
+    Example context (json):
+    {
+      "label": "Breadcrumb",
+      "items": [
+        {"label": "Knowledge base", "url": "/local/moodesk/kb.php", "current": false},
+        {"label": "Access", "url": "/local/moodesk/kb.php?category=3", "current": false},
+        {"label": "How to reset your password", "url": null, "current": true}
+      ]
+    }
+}}
+<nav class="mhd-breadcrumb" aria-label="{{label}}">
+  <ol class="mhd-breadcrumb__list">
+    {{#items}}
+    <li class="mhd-breadcrumb__item">
+      {{#current}}<span class="mhd-breadcrumb__current" aria-current="page">{{label}}</span>{{/current}}
+      {{^current}}<a class="mhd-breadcrumb__link" href="{{url}}">{{label}}</a>{{/current}}
+    </li>
+    {{/items}}
+  </ol>
+</nav>

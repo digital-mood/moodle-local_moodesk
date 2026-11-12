@@ -1,0 +1,1358 @@
+// =============================================================================
+// modules/_ticket-detail.scss
+//
+// The ticket detail screen: header, conversation, management rail and composer.
+//
+// One component, two mounts. The canonical page (view.php) and the overlay
+// drawer on the ticket list render the same markup, so this file styles the
+// screen once and only qualifies the handful of rules where the two genuinely
+// differ:
+//
+//   page   — flows with the shell's own scrolling; header, body and composer
+//            are stacked surfaces on the app canvas, and the rail is sticky.
+//   drawer — the panel is the viewport: header and composer are pinned to its
+//            edges and the body is the only scroll region.
+//
+// The panel itself (backdrop, animation, focus mechanics) belongs to
+// components/_drawer-detail.scss and is not repeated here.
+// =============================================================================
+
+@use 'sass:color';
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors'    as c;
+@use '../abstracts/breakpoints' as bp;
+@use '../abstracts/zindex'    as z;
+
+// The SLA band is ~162px tall. Below this viewport height it would cover most of
+// the rail's scrollport and hide the Properties card behind itself, so it stops
+// sticking and the rail becomes one plain scroll.
+$detail-sla-sticky-min-height: 760px;
+
+// The message box's line height and the send button's size. Aliases, so the
+// rules below read as they always did.
+//
+// The ceiling is deliberately not aliased here any more: it is declared once,
+// in components/_composer.scss, against the box wherever it renders. Naming it
+// in this file again is how the reply composer would quietly acquire its own
+// copy of a limit both forms are supposed to share.
+$composer-input-line-height: v.$mhd-composer-input-line-height;
+$composer-send-size:         v.$mhd-composer-send-size;
+
+// One line of the message box, and the padding that makes a one-line box
+// exactly as tall as the send button beside it. Derived rather than measured:
+// the box and the button are the two halves of one row, and a number typed
+// twice is a seam waiting to open the next time either changes.
+$composer-input-line:  calc(var(--mhd-font-size-md, 0.9375rem) * #{$composer-input-line-height});
+$composer-input-pad-y: calc((#{$composer-send-size} - #{$composer-input-line}) / 2);
+
+// The attachments panel, while it is open. Enough for three or four files at a
+// glance; past that it scrolls inside itself, so a large upload can never push
+// the message box or the send buttons out of the composer.
+$composer-panel-max: 160px;
+
+// Chevron for the property selects — matches the shell's filter controls.
+$detail-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23adb5bd' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+
+.mhd-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+
+.mhd-detail__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mhd-space-md, 16px);
+  padding: var(--mhd-space-md, 16px) var(--mhd-space-lg, 24px);
+  background: var(--mhd-color-surface, #fff);
+  border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+}
+
+.mhd-detail__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mhd-detail__pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mhd-space-sm, 8px);
+  margin-bottom: var(--mhd-space-sm, 8px);
+}
+
+.mhd-detail__title {
+  margin: 0 0 var(--mhd-space-xs, 4px);
+  font-size: var(--mhd-font-size-lg, 1.125rem);
+  font-weight: var(--mhd-font-weight-bold, 700);
+  line-height: 1.3;
+  color: var(--mhd-color-text, #1f2937);
+  overflow-wrap: anywhere;
+}
+
+.mhd-detail__meta {
+  margin: 0;
+  font-size: var(--mhd-font-size-xs, 0.75rem);
+  color: var(--mhd-color-text-muted, #6b7280);
+
+  // The separators are decoration; the parts stay legible when they wrap.
+  .mhd-detail__meta-sep {
+    padding: 0 var(--mhd-space-xs, 4px);
+  }
+}
+
+// The header's actions (KB-05: "Create article from this ticket"). One
+// secondary control beside the heading, before the drawer's close button; it
+// never takes height from the header, and at phone width it keeps its icon
+// and drops its label — the accessible name is on the control, not the label.
+.mhd-detail__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--mhd-space-sm, 8px);
+}
+
+.mhd-detail__create-kb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mhd-space-xs, 4px);
+  white-space: nowrap;
+}
+
+.mhd-detail__create-kb-icon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-detail__create-kb-label {
+    display: none;
+  }
+}
+
+// ── Sub-bar ──────────────────────────────────────────────────────────────────
+// Where this screen sits: back to the list. The canonical page only — the
+// drawer renders no sub-bar, because it never sends the user anywhere.
+
+.mhd-detail__subbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: var(--mhd-space-sm, 8px) var(--mhd-space-lg, 24px);
+  background: var(--mhd-color-surface, #fff);
+  border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+  font-size: var(--mhd-font-size-xs, 0.75rem);
+}
+
+.mhd-detail__back {
+  color: var(--mhd-color-text-muted, #6b7280);
+}
+
+// ── Section switch ───────────────────────────────────────────────────────────
+// Conversation / Details, where the layout has stopped being two columns.
+//
+// The strip renders `hidden` and detail_tabs.js reveals it, so a session with
+// no JavaScript never sees a control that would do nothing. Its width query
+// lives in the module rather than here, because it differs by mount — see the
+// note at the top of detail_tabs.js — and a rule here could only guess at one
+// of the two.
+//
+// Full-width segments rather than the underlined nav the workspace uses: there
+// are exactly two, they are a choice between halves of one screen, and at these
+// widths the strip is the only thing on its line.
+
+.mhd-detail__tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--mhd-space-xs);
+  padding: var(--mhd-space-sm) var(--mhd-space-lg);
+  background: var(--mhd-color-surface);
+  border-bottom: 1px solid var(--mhd-color-border);
+}
+
+.mhd-detail__tab {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--mhd-space-sm) 12px;
+  border: 1px solid transparent;
+  border-radius: var(--mhd-radius-md);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--mhd-font-size-sm);
+  font-weight: var(--mhd-font-weight-medium);
+  color: var(--mhd-color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+    color: var(--mhd-color-text);
+  }
+
+  // A tab strip is one Tab stop with a roving tabindex, so the focus ring is
+  // the only thing telling a keyboard user which of the two the arrows are on.
+  &:focus-visible {
+    outline: 2px solid var(--mhd-color-focus);
+    outline-offset: -2px;
+  }
+
+  // Set by the module, not by a class: the selected tab is the one the ARIA
+  // says is selected, and styling the same attribute keeps the two from ever
+  // disagreeing.
+  &[aria-selected="true"] {
+    background: var(--mhd-color-primary-soft);
+    border-color: var(--mhd-color-primary);
+    color: var(--mhd-color-primary-strong);
+    font-weight: var(--mhd-font-weight-semibold);
+  }
+}
+
+// ── Body: conversation + rail ────────────────────────────────────────────────
+
+.mhd-detail__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr var(--mhd-detail-rail-width, #{v.$mhd-detail-rail-width});
+  align-items: start;
+  gap: var(--mhd-space-md, 16px);
+  padding: var(--mhd-space-lg, 24px);
+}
+
+.mhd-detail__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mhd-space-md, 16px);
+
+  // The conversation carries tabindex so a keyboard-only user can scroll it;
+  // a tab stop that shows nothing when it is reached is a trap in practice.
+  &:focus-visible {
+    outline: 2px solid var(--mhd-color-primary, #2563eb);
+    outline-offset: -2px;
+  }
+}
+
+.mhd-detail__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  min-width: 0;
+}
+
+// ── Conversation ─────────────────────────────────────────────────────────────
+
+.mhd-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mhd-space-md, 16px);
+  min-width: 0;
+}
+
+.mhd-thread-entry {
+  border: 1px solid c.$mhd-color-border;
+  border-radius: var(--mhd-radius-md, 6px);
+  background: var(--mhd-color-surface, #fff);
+  overflow: hidden;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mhd-space-sm, 8px);
+    padding: 10px var(--mhd-space-md, 16px);
+    border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+  }
+
+  &__author {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--mhd-space-sm, 8px);
+    min-width: 0;
+    font-size: var(--mhd-font-size-sm, 0.8125rem);
+    color: var(--mhd-color-text, #1f2937);
+  }
+
+  &__time {
+    flex: 0 0 auto;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    color: var(--mhd-color-text-muted, #6b7280);
+    white-space: nowrap;
+  }
+
+  &__body {
+    padding: 12px var(--mhd-space-md, 16px);
+    font-size: var(--mhd-font-size-md, 0.9375rem);
+    color: var(--mhd-color-text, #1f2937);
+    overflow-wrap: anywhere;
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // An internal note is never sent to the requester; it has to be impossible to
+  // mistake for a reply while scanning.
+  &.mhd-thread-note {
+    border-left: 3px solid c.$mhd-note-border;
+  }
+
+  // The viewer's own messages sit inset, as in every support tool.
+  &.mhd-thread-own {
+    margin-left: var(--mhd-space-xl, 32px);
+    background: c.$mhd-own-bg;
+  }
+
+  &.mhd-thread-system {
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+  }
+
+  // Reached across a merge link: the reply belongs to a ticket that was merged
+  // into this one. Marked, not hidden — an agent reading the thread has to be
+  // able to tell whose conversation a message came from.
+  &.mhd-thread-linked {
+    border-left: 3px solid c.$mhd-color-primary;
+  }
+}
+
+// The tags that mark a message — internal note, system entry, reached across a
+// merge — are Pills in the warning, neutral and link variants respectively.
+// See components/_pill.scss.
+
+.mhd-thread-terminal {
+  margin: 0;
+  padding: var(--mhd-space-sm, 8px) var(--mhd-space-md, 16px);
+  border: 1px dashed var(--mhd-color-border-strong, #d1d5db);
+  border-radius: var(--mhd-radius-md, 6px);
+  background: var(--mhd-color-surface-muted, #f1f3f9);
+  font-size: var(--mhd-font-size-sm, 0.8125rem);
+  color: var(--mhd-color-text-muted, #6b7280);
+  text-align: center;
+}
+
+// ── Rail cards ───────────────────────────────────────────────────────────────
+
+// The SLA band. On the canonical page the rail is a plain column with no
+// scrollport of its own, so there is nothing to hold still against and the
+// wrapper gets out of the way entirely: `display: contents` leaves the card as
+// a direct flex child of the rail, exactly as before the band existed. The
+// drawer gives it a box and makes it stick.
+.mhd-rail-band {
+  display: contents;
+}
+
+.mhd-rail-card {
+  border: 1px solid var(--mhd-color-border, #e5e7eb);
+  border-radius: var(--mhd-radius-lg, 10px);
+  background: var(--mhd-color-surface, #fff);
+  overflow: hidden;
+
+  // The SLA card is the one that stays put: first in the rail, and in the
+  // drawer the head of a sticky band the other cards scroll under. The
+  // reference design lifts it by a hair so that edge reads as a layer, not a
+  // seam.
+  &.mhd-sla-panel {
+    box-shadow: v.$mhd-shadow-pinned;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mhd-space-sm, 8px);
+    padding: var(--mhd-space-sm, 8px) 12px;
+    background: v.$mhd-control-card-header-bg;
+    border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+  }
+
+  &__title {
+    font-size: var(--mhd-font-size-sm, 0.8125rem);
+    font-weight: var(--mhd-font-weight-semibold, 600);
+    color: var(--mhd-color-text, #1f2937);
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  &__desc {
+    margin: 0;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    color: var(--mhd-color-text-muted, #6b7280);
+    overflow-wrap: anywhere;
+  }
+}
+
+// The rail's SLA state tag is a Pill in the warning or danger variant.
+// See components/_pill.scss.
+
+// The rail's own actions — Merge and Revert merge — are the Button component
+// (components/_button.scss) at the xsmall size the rail's density calls for.
+// Merge opens the flow rather than performing it, so it is outlined-danger;
+// the filled danger belongs on the confirmation page.
+
+// ── Properties ───────────────────────────────────────────────────────────────
+
+.mhd-prop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mhd-space-xs, 4px);
+  margin: 0;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mhd-space-sm, 8px);
+  }
+
+  &__label {
+    margin: 0;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    font-weight: var(--mhd-font-weight-medium, 500);
+    color: var(--mhd-color-text-muted, #6b7280);
+  }
+
+  // Inline confirmation that the value is committed. Paired with a toast, not
+  // replaced by it: the toast says something happened, this says where.
+  &__saved {
+    font-size: 0.6875rem;
+    font-weight: var(--mhd-font-weight-semibold, 600);
+    color: var(--mhd-color-success, #198754);
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__select {
+    width: 100%;
+    height: 34px;
+    padding: 0 28px 0 10px;
+    font-size: var(--mhd-font-size-sm, 0.8125rem);
+    border: 1px solid var(--mhd-color-border-strong, #d1d5db);
+    border-radius: var(--mhd-radius-md, 6px);
+    background-color: var(--mhd-color-surface, #fff);
+    background-image: $detail-select-chevron;
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    color: var(--mhd-color-text, #1f2937);
+    appearance: none;
+    cursor: pointer;
+
+    &:focus {
+      border-color: var(--mhd-color-primary, #2563eb);
+      outline: 2px solid var(--mhd-color-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 0.6875rem;
+    color: var(--mhd-color-text-muted, #6b7280);
+  }
+
+  // The save button is the Button component, outlined at xsmall. All that is
+  // left here is where it sits: the property stack stretches its children, and
+  // a full-width Save under a select reads as the field's own footer rather
+  // than as a control you may press.
+  &__save {
+    align-self: flex-start;
+  }
+
+  // Auto-save is wired: the button has nothing left to do, and leaving it would
+  // suggest the change is not saved until it is pressed. It only disappears
+  // once the JS has actually attached — no JS, no hiding.
+  &--autosave .mhd-prop__save {
+    display: none;
+  }
+
+  &.is-saving .mhd-prop__select {
+    opacity: 0.7;
+  }
+}
+
+// ── Merge panel and merged sources ───────────────────────────────────────────
+
+// ── Composer ─────────────────────────────────────────────────────────────────
+
+.mhd-detail__composer {
+  flex: 0 0 auto;
+  padding: var(--mhd-space-md, 16px) var(--mhd-space-lg, 24px);
+  background: var(--mhd-color-surface, #fff);
+  border-top: 1px solid var(--mhd-color-border, #e5e7eb);
+}
+
+// The composer, top to bottom: mode tabs, the attachments panel while it is
+// disclosed, and one row that is the whole of the writing surface.
+//
+//   ┌────────────────────────────────────┐
+//   │ Public reply │ Internal note       │  head
+//   ├────────────────────────────────────┤
+//   │ 📄 error.log       12KB        ×   │  panel  (only while disclosed)
+//   │ [ Add file… ]                      │
+//   ├────────────────────────────────────┤
+//   │ 📎 │ Write a reply…          │ ➤ │  attach · input · send
+//   │    │ You must supply a value…│     │  error   (only when refused)
+//   └────────────────────────────────────┘
+//
+// The message and its validation error are two rows, not one, and that is
+// structural rather than decorative. moodleform wraps both in a single `.fitem`
+// — so with that wrapper as the grid item, the row grew when the error appeared
+// and the send button, sitting at the bottom of the row, went down with it. The
+// button is beside the BOX, not beside the box-and-whatever-the-server-said, so
+// the wrapper is dissolved and the two become items in their own right. Nothing
+// is offset, translated or pulled up: the row the button aligns to simply no
+// longer contains the error.
+//
+// One row, the way a messaging app draws it: attach, the message, send. There
+// is no action bar under the composer any more — Cancel is gone (the drawer's
+// close control is the way out of a ticket) and Send moved up beside the box it
+// sends, so a whole strip's worth of height went back to the conversation.
+//
+// Grid rather than flex, because that row's three cells do not come from the
+// same parent: the paperclip is the composer's own markup and the send button
+// is inside the moodleform. Grid areas place them as one row regardless, and
+// the `display: contents` chain below is what makes the form's own children
+// eligible to be placed at all.
+.mhd-composer {
+  display: grid;
+  //
+  // Two tool columns, not one: attach and the knowledge base (KB-05) each
+  // take a cell of their own, and a composer without one of them simply has
+  // an empty auto column, which is no width at all. The warning row is the R1
+  // safeguard's line (kb_insert.js); it is `hidden` and costs nothing until
+  // it is not.
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head   head   head   head"
+    "warn   warn   warn   warn"
+    "panel  panel  panel  panel"
+    "attach kb     input  send"
+    ".      .      error  .";
+  border: 1px solid var(--mhd-color-border-strong, #d1d5db);
+  border-left: 3px solid var(--mhd-color-border-strong, #d1d5db);
+  border-radius: var(--mhd-radius-md, 6px);
+  background: var(--mhd-color-surface, #fff);
+  overflow: hidden;
+
+  // The chain that lets the form's own fields be placed on the grid above.
+  //
+  // moodleform nests its fields — a form with no `header` element wraps
+  // everything in `<fieldset class="hidden"><div>` (lib/formslib.php,
+  // _openHiddenFieldsetTemplate) — and grid areas only apply to a container's
+  // direct children. Each level is dissolved so the fitems become children of
+  // the composer itself. Levels that a given Moodle version does not emit
+  // simply match nothing.
+  //
+  // Nothing about the form as a form changes: it still submits, still carries
+  // its action, its sesskey and its draft item id. `display: contents` is a
+  // layout statement only.
+  &__body,
+  &__attachments,
+  &__kb {
+    display: contents;
+  }
+
+  // An internal note is a different act from a reply, and the composer says so
+  // before a word is typed.
+  &.is-note {
+    border-left-color: c.$mhd-note-border;
+  }
+
+  &__tabs {
+    grid-area: head;
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+  }
+
+  &__tab {
+    padding: var(--mhd-space-sm, 8px) 14px;
+    border: 0;
+    background: transparent;
+    color: var(--mhd-color-text-muted, #6b7280);
+    font-size: var(--mhd-font-size-sm, 0.8125rem);
+    font-weight: var(--mhd-font-weight-medium, 500);
+    cursor: pointer;
+
+    &.active {
+      background: v.$mhd-control-card-header-bg;
+      color: var(--mhd-color-text, #1f2937);
+      font-weight: var(--mhd-font-weight-semibold, 600);
+    }
+  }
+
+  &.is-note &__tab[data-replytype="1"].active {
+    background: c.$mhd-note-border;
+    color: #212529;
+  }
+
+  &__heading {
+    grid-area: head;
+    padding: var(--mhd-space-sm, 8px) 14px;
+    background: v.$mhd-control-card-header-bg;
+    border-bottom: 1px solid var(--mhd-color-border, #e5e7eb);
+    font-size: var(--mhd-font-size-sm, 0.8125rem);
+    font-weight: var(--mhd-font-weight-semibold, 600);
+    color: var(--mhd-color-text, #1f2937);
+  }
+
+  // The two attachment controls are ours, not the form's, and they sit at
+  // opposite ends of the composer — the panel above the action bar, the
+  // paperclip inside it. Dissolving their wrapper lets each take its own grid
+  // area. composer_attachments.js still hides the wrapper with `hidden` on a
+  // page with no file picker, and that works despite `display: contents`:
+  // Bootstrap's reboot, in every Moodle theme, sets
+  // `[hidden] { display: none !important; }`. Verified 2026-10-01.
+  &__attachments {
+    display: contents;
+  }
+
+  // ── Attach ──
+  // A disclosure, not an upload. It reveals what the draft is holding; the
+  // upload itself goes through Moodle's file picker from inside the panel
+  // (ADR: docs/reply-composer-attachments.md).
+  //
+  // The cell exists so the action bar can be painted around the button rather
+  // than onto it: the strip's background and top border belong to the row, and
+  // a button carrying them itself would have to be the height of the row.
+  // Attach and send bracket the message box. Both sit at the bottom of their
+  // row rather than its middle: the box grows upward as a reply is written, and
+  // controls centred against it would drift away from the line being typed.
+  &__attach-cell {
+    grid-area: attach;
+    display: flex;
+    align-items: flex-end;
+    padding: var(--mhd-space-xs, 4px) 0 var(--mhd-space-xs, 4px) var(--mhd-space-xs, 4px);
+  }
+
+  // The knowledge base tool's cell (KB-05): the same cell as attach, one
+  // column over, drawing the same button. The panel it discloses is the
+  // composer's panel area, styled in components/_composer-kb.scss.
+  &__kb-cell {
+    grid-area: kb;
+    display: flex;
+    align-items: flex-end;
+    padding: var(--mhd-space-xs, 4px) 0 var(--mhd-space-xs, 4px) var(--mhd-space-xs, 4px);
+  }
+
+  // R1: "review this message" under the tabs, only while the module says so.
+  &__kb-warning {
+    grid-area: warn;
+    margin: 0;
+    padding: var(--mhd-space-sm, 8px) 14px;
+    background: c.$mhd-note-border;
+    color: c.$mhd-color-text;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    line-height: var(--mhd-line-height, 1.45);
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__attach {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mhd-space-xs, 4px);
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--mhd-color-border-strong, #d1d5db);
+    border-radius: var(--mhd-radius-md, 6px);
+    background: var(--mhd-color-surface, #fff);
+    color: var(--mhd-color-text-muted, #6b7280);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--mhd-color-text-muted, #6b7280);
+      color: var(--mhd-color-text, #1f2937);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mhd-color-primary, #2563eb);
+      outline-offset: 1px;
+    }
+  }
+
+  &__attach-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  // What a closed panel still says. Without it, collapsing the panel would look
+  // like discarding the files.
+  &__attach-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: c.$mhd-color-primary-soft;
+    color: c.$mhd-color-primary-strong;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    font-weight: var(--mhd-font-weight-bold, 700);
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  // ── Panel ──
+  // The disclosed file list. Absent from the layout entirely while closed —
+  // that absence is what keeps the composer at rest small.
+  &__panel {
+    grid-area: panel;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mhd-space-sm, 8px);
+    max-height: $composer-panel-max;
+    padding: 12px;
+    overflow-y: auto;
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+    border-top: 1px dashed var(--mhd-color-border-strong, #d1d5db);
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  // The file list itself (`&__files` and the `&__file*` rows) is not here any
+  // more: the New ticket form renders the same list, so it moved to
+  // components/_attach-control.scss unchanged. The compiled selectors are the
+  // same ones this block produced.
+
+  // Add file is the Button component, outlined at xsmall. Its dashed border was
+  // this screen's own invention and nothing else in the product had one; the
+  // disabled state at the file limit — the button stays put rather than
+  // vanishing, because a control that disappears reads as a bug — is what the
+  // component already does with `:disabled`.
+  &__addfile {
+    align-self: flex-start;
+  }
+
+  &__panel-note {
+    margin: 0;
+    color: var(--mhd-color-text-muted, #6b7280);
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+  }
+
+}
+
+// =============================================================================
+// moodleform inside the composer
+//
+// The reply form is Moodle's own markup, rendered verbatim and RESTYLED (ADR
+// §4 — never replaced), so validation, CSRF, draft areas, notifications and the
+// SLA side effects of a reply stay untouched. Scoped under `.moodesk-app
+// .mhd-composer` so it outranks the shared `.moodesk-app .mform` rules in
+// components/_forms-controls.scss without touching them.
+//
+// Selectors that reach into Moodle internals degrade to the stock look rather
+// than to a broken layout.
+// =============================================================================
+
+.moodesk-app .mhd-composer {
+
+  // The form stops being a box, and so does every wrapper between it and its
+  // fields, so the fitems become the composer's own grid items and can be
+  // placed on its areas. A form with no `header` element is wrapped in
+  // `<fieldset class="hidden"><div>` (lib/formslib.php,
+  // _openHiddenFieldsetTemplate); older and newer layouts add or drop levels,
+  // and a level a given version does not emit simply matches nothing here.
+  .mform,
+  .mform > fieldset,
+  .mform > fieldset > div,
+  .mform .fcontainer {
+    display: contents;
+  }
+
+  .mform {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .mform fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .fitem {
+    display: block;
+    margin: 0;
+  }
+
+  // The message field's own wrapper goes the way of the ones above it. Moodle
+  // packs the box and its validation message into one `.fitem`, and while that
+  // wrapper was the grid item the two shared a row — so the row grew when the
+  // server refused a reply, and the send button aligned to the bottom of it
+  // went down with the error. Dissolving the wrapper is what lets the box take
+  // the `input` cell and the error take its own beneath it.
+  //
+  // The label wrapper inside it is absolutely positioned (it is the composer's
+  // own tab row that names this field, so Moodle's label is hidden rather than
+  // shown twice), and an absolutely positioned child claims no cell.
+  //
+  // The !important is Bootstrap's, not ours: Moodle puts `d-flex` on the
+  // element wrapper, and Bootstrap emits its display utilities with
+  // !important — so a plain `display: contents` here lost, the wrapper stayed
+  // a flex box between the grid and the box, and the box and the button ended
+  // up in different rows with nothing in the markup to show why.
+  #fitem_id_mhdreply_message,
+  #fitem_id_mhdreply_message > .felement,
+  #fitem_id_mhdreply_message > [class*="col-md-9"] {
+    display: contents !important;
+  }
+
+  // The box itself, now that it is the item.
+  //
+  // Addressed by the data-region the plugin puts on it, not by its class. An
+  // element's `class` attribute does not reach the control: Moodle 5 renders it
+  // on the `.fitem` wrapper and gives the control `form-control` and nothing
+  // else, so `textarea.mhd-composer__input` matched no element in this form —
+  // and the message box had been running on stock Bootstrap all along, at its
+  // 36.5px minimum with no ceiling of its own. The data-region is the plugin's
+  // own hook, it is what every module in amd/src already uses to find this box,
+  // and Moodle has no opinion about it.
+  //
+  // `align-self` is left alone: the default stretch is what fills the row, and
+  // in the drawer that row is the composer's only flexible one.
+  textarea[data-region="mhd-composer-input"] {
+    grid-area: input;
+    // Keeps the box off the composer's own border; the attach cell and the send
+    // button carry the matching inset on their own sides.
+    margin: var(--mhd-space-xs, 4px) 0;
+  }
+
+  // The validation message, in the row below the box rather than inside it.
+  // Bootstrap keeps it `display: none` until the control is marked invalid, so
+  // this row is nothing at all until there is something to say.
+  #id_error_mhdreply_message {
+    grid-area: error;
+  }
+
+  // The send control. A real submit inside the moodleform, drawn as an icon,
+  // square at the smallest target a thumb should be asked to hit — and the
+  // same height whatever the message box has grown to. Its size is the token
+  // the message box takes its own minimum height from, so a one-line composer
+  // is one line tall on both sides of the row.
+  //
+  // Deliberately not the shared button component. `.mhd-btn` is the product's
+  // labelled button — padding for text, a minimum width, a size scale — and
+  // none of that describes a square icon control. The composer's paperclip is
+  // its own control for the same reason, and these two are a pair.
+  &__send {
+    grid-area: send;
+    align-self: end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: $composer-send-size;
+    height: $composer-send-size;
+    margin: var(--mhd-space-xs, 4px) var(--mhd-space-xs, 4px) var(--mhd-space-xs, 4px) 0;
+    padding: 0;
+    border: 0;
+    // Round on the right only. The button is the end of the message box, not a
+    // second control beside it: the box is square and ends where the button
+    // begins, and a radius on the button's left corners let the composer's own
+    // background show through at the join — two white notches, top and bottom,
+    // cut out of the blue. The frame around both carries the outer radius.
+    border-radius: 0 var(--mhd-radius-md, 6px) var(--mhd-radius-md, 6px) 0;
+    background: var(--mhd-color-primary, #{c.$mhd-color-primary});
+    color: var(--mhd-color-text-inverse, #{c.$mhd-color-text-inverse});
+    cursor: pointer;
+    transition: background var(--mhd-transition-fast, 0.15s ease);
+
+    &:hover {
+      background: var(--mhd-color-primary-strong, #{c.$mhd-color-primary-strong});
+    }
+
+    &:active {
+      background: var(--mhd-color-primary-strong, #{c.$mhd-color-primary-strong});
+      transform: translateY(1px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mhd-color-primary, #{c.$mhd-color-primary});
+      outline-offset: 2px;
+    }
+
+    // While a send is in flight reply_submit.js disables it, and the control has
+    // to say so: nothing else on screen reports that the reply has left.
+    &:disabled {
+      background: var(--mhd-color-border-strong, #{c.$mhd-color-border-strong});
+      color: var(--mhd-color-text-muted, #{c.$mhd-color-text-muted});
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+
+      &:active {
+        transform: none;
+      }
+    }
+  }
+
+  &__send-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  // The message label is the composer's own tab row; keeping Moodle's label
+  // would state it twice. It stays in the DOM for screen readers.
+  #fitem_id_mhdreply_message > .col-form-label,
+  #fitem_id_mhdreply_message > [class*="fitemtitle"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0 !important;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  // NOTE ON !important: Bootstrap's spacing utilities are emitted with
+  // !important, so undoing them requires matching it. Every use here is scoped
+  // to the composer and exists only to neutralise a utility class Moodle puts
+  // on its own markup.
+  .fitem > .col-form-label,
+  .fitem > [class*="fitemtitle"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+    padding: 12px 12px 0 !important;
+    text-align: left;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    font-weight: var(--mhd-font-weight-medium, 500);
+    color: var(--mhd-color-text-muted, #6b7280);
+  }
+
+  .fitem > .felement,
+  .fitem > [class*="col-md-9"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .fitem > .felement > *,
+  .fitem > [class*="col-md-9"] > * {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  // ── The writing area ──
+  // A plain textarea, styled as mooDesk's own control rather than as whatever
+  // editor the site happens to have installed. No frame of its own: the
+  // composer around it already is the frame.
+  //
+  // Height is not set here. The box opens at the element's `rows` and grows
+  // with what is written (amd/src/composer_autogrow.js) until it reaches the
+  // ceiling below, after which it scrolls — so the composer claims the height a
+  // reply actually needs and no more.
+  // `textarea[data-region]` rather than the class, for the reason above: the
+  // class is on the wrapper, the data-region is on the control. Qualified with
+  // `textarea` so it stays obvious which element this describes.
+  textarea[data-region="mhd-composer-input"] {
+    display: block;
+    width: 100%;
+    // What this rule adds is the composer's frame: the box's floor, its inset,
+    // and the fact that it has no border of its own because the composer around
+    // it already is the frame.
+    //
+    // The ceiling, the line height and the absence of a drag handle are NOT
+    // here. They belong to the message box wherever it renders — the New ticket
+    // form has the same control — and they live once, in
+    // components/_composer.scss. This rule is more specific than that one, so
+    // anything it restated would silently become the reply composer's private
+    // copy of a shared decision.
+    //
+    // One line, and exactly as tall as the send button beside it. The padding
+    // is derived from that button rather than typed as a number, so the row
+    // stays a row: one line of text plus the space left over once the button's
+    // height has had its line taken out of it. The min-height is the floor that
+    // survives sub-pixel rounding — nothing more, and it is never what a box
+    // with text in it is sized by.
+    //
+    // Growth is untouched. composer_autogrow.js still sets an inline height
+    // from scrollHeight on every keystroke, and every line after the first adds
+    // its own line-height on top of this.
+    min-height: $composer-send-size;
+    padding: $composer-input-pad-y 12px;
+    border: 0;
+    border-radius: 0;
+    background: var(--mhd-color-surface, #fff);
+    color: var(--mhd-color-text, #1f2937);
+    font-family: inherit;
+    font-size: var(--mhd-font-size-md, 0.9375rem);
+
+    &::placeholder {
+      color: var(--mhd-color-text-muted, #6b7280);
+    }
+
+    // Drawn inside the box rather than around it: the textarea sits flush
+    // against the composer's own border, so an outline on the outside would be
+    // clipped on three sides and read as a stray line on the fourth.
+    //
+    // The same goes for Bootstrap's focus glow. `.form-control:focus` paints a
+    // translucent halo outside the control, and here that halo spilled into
+    // the composer's inner margin above and below the box and stopped dead at
+    // the send button's edge — a second, softer ring, discontinuous exactly at
+    // the join. The inset outline is this box's ring; the halo is cleared.
+    &:focus {
+      box-shadow: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mhd-color-primary, #2563eb);
+      outline-offset: -2px;
+    }
+
+    &:disabled {
+      background: var(--mhd-color-surface-muted, #f1f3f9);
+      color: var(--mhd-color-text-muted, #6b7280);
+      cursor: not-allowed;
+    }
+
+    // Moodle marks a failed field with .is-invalid and renders its message
+    // below; the box says so too, so the error is visible without reading.
+    // `:focus` is restated so this inset line survives focus: Bootstrap has its
+    // own `.is-invalid:focus` glow, and the clearing rule above would otherwise
+    // take the red line with it.
+    &.is-invalid,
+    &.is-invalid:focus {
+      box-shadow: inset 0 0 0 1px var(--mhd-color-danger, #dc3545);
+    }
+  }
+
+  // There are no file manager rules here any more, and their absence is the
+  // point: the reply form no longer renders one. Attachments are the composer's
+  // own attach button and chips, driving Moodle's file picker over the draft
+  // area the form's hidden field names — so the composer has nothing left to
+  // restyle down to size, and nothing left that depends on Moodle's private
+  // `.fp-*` / `.fm-*` markup (ADR: docs/reply-composer-attachments.md).
+
+  // There is no action bar to paint any more. What used to be a strip across
+  // the bottom of the composer — its own background, its own top border, the
+  // paperclip at one end and Send and Cancel at the other — is one row with the
+  // message box in it, and the box's own frame is the only edge left to draw.
+
+  // Validation messages. Even air above and below, and the same 12px inset as
+  // the message box, so the error lines up with the text it is about instead of
+  // hanging off the composer's edge.
+  .form-control-feedback,
+  .invalid-feedback {
+    padding: var(--mhd-space-sm, 8px) 12px;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    color: var(--mhd-color-danger, #dc3545);
+  }
+
+}
+
+// An internal note in progress carries its colour through to the send button,
+// so the last thing the eye passes before clicking still says "note".
+.moodesk-app .mhd-composer.is-note {
+  .mhd-composer__send {
+    background: c.$mhd-note-border;
+    color: #212529;
+
+    // The note amber, taken down a step rather than given a token of its own:
+    // one hover state is not a palette entry.
+    &:hover,
+    &:active {
+      background: color.adjust(c.$mhd-note-border, $lightness: -8%);
+    }
+
+    &:disabled {
+      background: var(--mhd-color-border-strong, #{c.$mhd-color-border-strong});
+      color: var(--mhd-color-text-muted, #{c.$mhd-color-text-muted});
+    }
+  }
+}
+
+// ── Mount-specific: the page ─────────────────────────────────────────────────
+// The shell owns the scrolling here, so the detail is a stack of surfaces on
+// the canvas rather than a panel with pinned edges.
+
+.moodesk-app__content > .mhd-detail {
+  .mhd-detail__header {
+    border-radius: var(--mhd-radius-lg, 10px) var(--mhd-radius-lg, 10px) 0 0;
+    border: 1px solid var(--mhd-color-border, #e5e7eb);
+    border-bottom: 0;
+  }
+
+  .mhd-detail__subbar {
+    border: 1px solid var(--mhd-color-border, #e5e7eb);
+    border-top: 0;
+    border-radius: 0 0 var(--mhd-radius-lg, 10px) var(--mhd-radius-lg, 10px);
+  }
+
+  .mhd-detail__body {
+    padding: var(--mhd-space-md, 16px) 0;
+  }
+
+  // Clear of the shell's sticky top bar.
+  .mhd-detail__rail {
+    top: calc(var(--mhd-topbar-height, 60px) + var(--mhd-space-md, 16px));
+  }
+
+  .mhd-detail__composer {
+    padding: 0;
+    background: transparent;
+    border-top: 0;
+  }
+}
+
+// ── Mount-specific: the drawer ───────────────────────────────────────────────
+// The panel is the viewport, so the regions inside it have to share a fixed
+// height. Everything in this section is scoped to `.mhd-detail-drawer` on
+// purpose: the canonical page above flows with the shell's own scrolling and
+// must never inherit a confined layout.
+//
+// The workspace is the only flexible space between the sub-bar and the composer,
+// and it scrolls nothing itself — the conversation and the rail are two
+// independent scrollports side by side, so reading a long thread never moves the
+// rail and working the rail never moves the thread.
+//
+// The composer cannot be allowed to take what it asks for: TinyMCE and the file
+// manager bring ~680px of intrinsic height between them, and as a non-shrinking
+// flex item that left the conversation with 64px. It is capped instead, scrolls
+// internally, and keeps its send buttons pinned to its own bottom edge — so the
+// thread keeps the majority of the panel at every viewport, and every control in
+// the composer stays reachable.
+
+.mhd-detail-drawer .mhd-detail {
+  &__body {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+  }
+
+  // Conversation. Holds the thread, the merged banner, the custom fields and the
+  // merged source fields — all of them ticket content, none of them management.
+  &__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    gap: 12px;
+    padding: var(--mhd-detail-drawer-pad, 20px);
+  }
+
+  // Management rail. Wider than on the page by exactly its own padding, because
+  // here it carries that padding itself (see abstracts/_variables.scss).
+  &__rail {
+    flex: 0 0 var(--mhd-detail-drawer-rail-width, #{v.$mhd-detail-drawer-rail-width});
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    // Reserve the scrollbar track: without it the cards jump sideways the
+    // moment the rail grows past its own height.
+    scrollbar-gutter: stable;
+    // The rail no longer follows the conversation's scrolling — it has its own.
+    position: static;
+    // No padding at the top: the SLA band supplies it, so that the band's own
+    // opaque background reaches the edge of the scrollport and cards passing
+    // under it are covered rather than showing through a transparent gap.
+    padding: 0 var(--mhd-detail-drawer-pad, 20px) var(--mhd-detail-drawer-pad, 20px);
+    background: var(--mhd-color-canvas, #f5f6fb);
+    border-left: 1px solid var(--mhd-color-border, #e5e7eb);
+
+    // Without SLA (Starter, or a ticket with no policy attached) there is no
+    // band to supply it, and Properties would hug the sub-bar.
+    > :first-child:not(.mhd-rail-band) {
+      margin-top: var(--mhd-detail-drawer-pad, 20px);
+    }
+  }
+
+  // Both scrollports are flex columns with a bounded height, so their children
+  // are flex items that SHRINK by default — and a rail card clips its own
+  // contents (`overflow: hidden`, for the rounded corners). Left alone the cards
+  // squeeze to fit the rail exactly, lose their bottom halves to that clip, and
+  // the scrollbar never appears because nothing ever overflows. They keep their
+  // natural height instead, and the scrollport does its job.
+  &__main > *,
+  &__rail > * {
+    flex: 0 0 auto;
+  }
+
+  // Pinned to the bottom edge of the panel, outside both scrollports.
+  //
+  // There is no floor any more, and that is the point. The old one existed to
+  // stop the flex algorithm squeezing the composer flat, back when the editor
+  // brought ~680px of intrinsic height and the composer had to be held open
+  // against it. Two things have since removed the need: flex-shrink is 0, so
+  // nothing can squeeze it, and the message box is a textarea that opens at
+  // one line instead of an editor that opens at a toolbar. The composer now
+  // asks for what the reply actually needs — a single line against the ~400px
+  // it used to take — and the conversation keeps the rest.
+  //
+  // The ceiling stays: it is what stops a long draft from taking the panel.
+  // No min-height is declared rather than declaring `auto`: that IS the initial
+  // value, and Firefox has never accepted the keyword outside flex items.
+  &__composer {
+    flex: 0 0 auto;
+    display: flex;
+    max-height: 45%;
+    padding: var(--mhd-space-md, 16px) var(--mhd-detail-drawer-pad, 20px);
+  }
+}
+
+// The SLA band, holding the top of the rail's scrollport.
+//
+// The bleed is what makes it opaque edge to edge: the negative side margins undo
+// the rail's horizontal padding so the background spans the full track, and the
+// negative bottom margin cancels the rail's gap so the band's own bottom padding
+// becomes that gap instead — 12px of opaque cover below the card, where the next
+// one would otherwise appear to slide out from under a hard edge.
+.mhd-detail-drawer .mhd-rail-band {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: z.$mhd-z-rail-band;
+  margin: 0 calc(var(--mhd-detail-drawer-pad, 20px) * -1) -12px;
+  padding: var(--mhd-detail-drawer-pad, 20px) var(--mhd-detail-drawer-pad, 20px) 12px;
+  background: var(--mhd-color-canvas, #f5f6fb);
+}
+
+// Short viewports: the band is taller than the room it would leave, so it stops
+// sticking and the rail scrolls as one. Everything else about it is unchanged —
+// the bleed still resolves to the same spacing when it is not stuck.
+@media (max-height: #{$detail-sla-sticky-min-height}) {
+  .mhd-detail-drawer .mhd-rail-band {
+    position: static;
+  }
+}
+
+.mhd-detail-drawer .mhd-composer {
+  min-height: 0;
+  width: 100%;
+}
+
+// Inside the panel the composer has a ceiling, so something has to give when
+// there is not enough room for everything. It is the message row, and only the
+// message row: the tab strip, the chips, the attach button and the send buttons
+// keep their place, so every control stays reachable without scrolling the
+// composer.
+//
+// The grid does this by row sizing rather than by flex: the message row is the
+// only one allowed to take the leftover space and to shrink below its content
+// (`minmax(0, 1fr)`), while the tabs, the attachments panel above it and the
+// validation row below it stay at their natural height. The flexible row is the
+// third — attach, message and send share it — so those three are held to the
+// message box's height and cannot be pushed out of a short panel. The box
+// itself scrolls once it is squeezed: it already carries `overflow-y: auto`.
+//
+// The message row's floor is the send button's height, which is the smallest
+// the composer is ever allowed to be. That is deliberate: the old floor of zero
+// existed to stop a ~680px editor eating the panel, and there is no editor
+// here any more — a box too short to hold one line is not a saving.
+//
+// The message box caps its own growth, so this only comes into play on a panel
+// too short to hold even a capped composer.
+//
+// This is the one thing the page mount must NOT inherit — there the composer
+// has no ceiling and the message row should simply be as tall as it is.
+//
+// Five rows, matching the areas declared on .mhd-composer: tabs, the R1
+// warning line, the disclosed panel, the message row, the validation row.
+.moodesk-app .mhd-detail-drawer .mhd-composer {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+// The knowledge base panel inside the drawer (KB-05): the composer there has
+// a ceiling of its own (45% of the panel), and a list that took its full
+// 320px would leave the message row at its floor. Lower ceiling, same scroll.
+.mhd-detail-drawer .mhd-composer__panel.mhd-kb-insert {
+  max-height: 200px;
+}
+
+// ── Responsive ───────────────────────────────────────────────────────────────
+// Legibility first: when the grid stops fitting, the rail goes under the
+// conversation rather than squeezing it. Nothing scrolls sideways.
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-detail__body {
+    grid-template-columns: 1fr;
+  }
+
+  .mhd-detail__rail {
+    position: static;
+  }
+}
+
+// The drawer's own width is its container, so it keeps both scrollports until
+// the panel itself gets narrow — a 900px viewport still shows an 880px panel.
+//
+// At and below the tablet step the panel is full-bleed and neither region would
+// have room beside the other. The two scrollports collapse back into one: a
+// single column that scrolls as a whole, which is what the canonical page does.
+// The tab switch that replaces this arrives with the responsive phase — and
+// detail_tabs.js reads the same width from --mhd-bp-tablet-max, so the tabs
+// appear exactly when this query fires.
+@include bp.mhd-respond-to('tablet') {
+  .mhd-detail-drawer .mhd-detail__body {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .mhd-detail-drawer .mhd-detail__main,
+  .mhd-detail-drawer .mhd-detail__rail {
+    overflow: visible;
+  }
+
+  .mhd-detail-drawer .mhd-detail__rail {
+    border-left: 0;
+  }
+
+  // One scrollport means nothing for the band to hold still against: stuck to
+  // the top of the shared scroll it would ride over the conversation.
+  .mhd-detail-drawer .mhd-rail-band {
+    position: static;
+  }
+}
+
+@include bp.mhd-respond-to('tablet') {
+  .mhd-detail__header,
+  .mhd-detail__subbar,
+  .mhd-detail__composer {
+    padding-left: var(--mhd-space-md, 16px);
+    padding-right: var(--mhd-space-md, 16px);
+  }
+
+  .mhd-detail__body {
+    padding: var(--mhd-space-md, 16px);
+  }
+
+  .moodesk-app__content > .mhd-detail .mhd-detail__body {
+    padding: var(--mhd-space-md, 16px) 0;
+  }
+
+  // The inset on the viewer's own messages costs more than it says at this
+  // width.
+  .mhd-thread-entry.mhd-thread-own {
+    margin-left: 0;
+  }
+}

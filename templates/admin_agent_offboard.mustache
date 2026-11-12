@@ -1,0 +1,119 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/admin_agent_offboard
+
+    Offboard an agent (Agent Management A3) — confirmation screen. Managed agents
+    can be removed (open tickets are returned to the queue first); unmanaged
+    agents get a read-only explanation pointing to Moodle's role screens.
+
+    Context variables:
+      * formurl       - This page's URL (offboard POST target)
+      * backurl       - URL back to the agents directory
+      * rolesurl      - Deep link to Moodle's role management (unmanaged case)
+      * userid        - The agent being offboarded
+      * fullname      - Agent full name
+      * email         - Agent email
+      * managed       - True when the agent holds the mooDesk-managed role
+      * openworkload  - Number of open tickets assigned to the agent
+      * hasopen       - True when openworkload > 0
+      * sesskey       - Session key for the offboard POST
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Remove agent",
+        "description": null,
+        "meta": null,
+        "actions": [],
+        "primaryaction": null,
+        "hasactions": false
+      },
+      "formurl": "/local/moodesk/offboard_agent.php",
+      "backurl": "/local/moodesk/agents.php",
+      "rolesurl": "/admin/roles/manage.php",
+      "userid": 7,
+      "fullname": "Martin Lopez",
+      "email": "martin.lopez@example.com",
+      "managed": true,
+      "openworkload": 4,
+      "hasopen": true,
+      "confirmbody": "Removing revokes their agent access and clears their department membership. It does not delete the Moodle account.",
+      "sesskey": "abc123"
+    }
+}}
+<div class="mhd-admin-agent-offboard">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  <div class="card" style="max-width: 640px;">
+    <div class="card-body">
+
+      <div class="mb-3">
+        <strong>{{fullname}}</strong>
+        <div class="text-muted small">{{email}}</div>
+      </div>
+
+      {{#managed}}
+      {{#hasopen}}
+      <div class="alert alert-warning" role="alert">
+        {{#str}} agents_offboard_requeue_warning, local_moodesk, {{openworkload}} {{/str}}
+      </div>
+      {{/hasopen}}
+      {{^hasopen}}
+      <p class="text-muted">{{#str}} agents_offboard_no_tickets, local_moodesk {{/str}}</p>
+      {{/hasopen}}
+
+      <p>{{confirmbody}}</p>
+
+      <form method="post" action="{{formurl}}" class="d-flex align-items-center">
+        <input type="hidden" name="action"  value="offboard">
+        <input type="hidden" name="userid"  value="{{userid}}">
+        <input type="hidden" name="sesskey" value="{{sesskey}}">
+        {{! The one place a filled danger is right: a confirmation page whose
+            whole purpose is this single, deliberate, irreversible action. It
+            appears once, so emphasis reads as weight rather than as alarm —
+            which is exactly why the repeated row actions are outlined. }}
+        <button type="submit" class="mhd-btn mhd-btn--danger mr-2">
+          {{#str}} agents_offboard_confirm_button, local_moodesk {{/str}}
+        </button>
+        <a href="{{backurl}}" class="mhd-btn mhd-btn--outlined">
+          {{#str}} agents_offboard_cancel, local_moodesk {{/str}}
+        </a>
+      </form>
+      {{/managed}}
+
+      {{^managed}}
+      <div class="alert alert-info" role="alert">
+        {{#str}} agents_managed_moodle_hint, local_moodesk {{/str}}
+      </div>
+      <div class="d-flex align-items-center">
+        {{! Nothing destructive is possible here — the agent is managed outside
+            mooDesk — so the pair is a way onward and a way back. }}
+        <a href="{{rolesurl}}" class="mhd-btn mhd-btn--outlined mr-2" target="_blank" rel="noopener">
+          {{#str}} agents_manage_in_moodle, local_moodesk {{/str}}
+        </a>
+        <a href="{{backurl}}" class="mhd-btn mhd-btn--text">
+          {{#str}} agents_offboard_cancel, local_moodesk {{/str}}
+        </a>
+      </div>
+      {{/managed}}
+
+    </div>
+  </div>
+
+</div>

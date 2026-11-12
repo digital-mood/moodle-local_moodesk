@@ -1,0 +1,13 @@
+// =============================================================================
+// states/_status.scss
+// Status-driven state classes — applied dynamically by JS or PHP to reflect
+// the current ticket state on page-level containers.
+//
+// Colour tokens live in abstracts/_colors.scss.
+// Pill colour variants live in components/_pill.scss.
+// This file handles structural/layout state changes driven by status.
+// =============================================================================
+
+// Row-level state: highlight tickets in a specific status
+// (e.g. add a left-border accent to all "urgent + open" rows in future).
+// Placeholder — implement when status-driven row styling is needed.

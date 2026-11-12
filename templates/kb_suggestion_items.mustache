@@ -1,0 +1,57 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/kb_suggestion_items
+
+    The rows of the "Suggested articles" block, rendered in the browser by
+    local_moodesk/kb_suggestions from what local_moodesk_search_kb_articles
+    returned. Every field is plain text from the endpoint and is escaped
+    here; nothing arrives as HTML.
+
+    Each row is one link that opens the article in a new tab, said out loud
+    for screen readers and shown as a glyph for everyone else. The excerpt
+    and the category sit outside the link so the link's name is the title.
+
+    Context variables:
+      * articles[]    - {id, title, excerpt, categoryname, url, lang, langlabel — langlabel is the language's name when
+                       the row is not in the viewer's language (KB-06), else empty}
+      * newtab        - "(opens in a new tab)"
+
+    Example context (json):
+    {
+      "articles": [
+        {"id": 7, "title": "How to reset your password", "excerpt": "Use the Forgotten password link…",
+         "categoryname": "Access", "url": "/local/moodesk/kb_article.php?id=7", "lang": "en", "langlabel": ""}
+      ],
+      "newtab": "(opens in a new tab)"
+    }
+}}
+<ul class="mhd-kb-suggest__list">
+    {{#articles}}
+    <li class="mhd-kb-suggest__item" data-article-id="{{id}}">
+        <div class="mhd-kb-suggest__row">
+            <a href="{{url}}" class="mhd-kb-suggest__link" target="_blank" rel="noopener">
+                {{title}}<span class="sr-only"> {{newtab}}</span>
+                <svg class="mhd-kb-suggest__ext" aria-hidden="true" focusable="false"><use href="#mhd-icon-external"></use></svg>
+            </a>
+            {{#categoryname}}<span class="mhd-kb-suggest__category">{{categoryname}}</span>{{/categoryname}}
+            {{#langlabel}}<span class="mhd-pill mhd-pill--outline mhd-kb-lang-badge">{{langlabel}}</span>{{/langlabel}}
+        </div>
+        {{#excerpt}}<p class="mhd-kb-suggest__excerpt">{{excerpt}}</p>{{/excerpt}}
+    </li>
+    {{/articles}}
+</ul>

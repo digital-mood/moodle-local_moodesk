@@ -1,0 +1,515 @@
+// =============================================================================
+// layout/_filters.scss
+// Filter bar: search input + dropdown selects.
+// Handles structural layout and responsiveness only — no color semantics.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/breakpoints' as bp;
+@use '../abstracts/colors' as c;
+@use '../abstracts/zindex' as z;
+@use 'table-toolbar' as tb;
+
+// The ticket list's own band of controls. It carries more than a table toolbar
+// does — saved views, dismissible chips, a `<details>` fold on phones — but the
+// row itself is the same row, so it takes its geometry from the toolbar mixin
+// rather than from a second copy of the same four properties. Two flex rows
+// meant to look identical do not stay identical when they are spelled out
+// twice. See layout/_table-toolbar.scss.
+.mhd-filter-bar {
+  @include tb.mhd-toolbar-row;
+
+  position: relative; // Required: dropdown panels use position: absolute inside this container.
+  margin-bottom: v.$mhd-space-md;
+  padding: v.$mhd-space-xs 0;
+}
+
+// ---- Search input -----------------------------------------------------------
+
+.mhd-filter-search {
+  position: relative;
+  flex: 2 1 220px;
+  min-width: 0;
+}
+
+.mhd-filter-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.mhd-filter-search-input {
+  width: 100%;
+  height: v.$mhd-filter-input-height;
+  padding: 0 v.$mhd-space-sm 0 32px;
+  font-size: v.$mhd-font-size-sm;
+  border: 1px solid #dee2e6;
+  border-radius: v.$mhd-radius-md;
+  background-color: #fff;
+  color: inherit;
+  transition: border-color v.$mhd-transition-fast, box-shadow v.$mhd-transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+  }
+
+  &::placeholder {
+    color: #adb5bd;
+  }
+}
+
+// ---- Dropdown filters -------------------------------------------------------
+// The status dropdown and the date range. `position: relative` is the stacking
+// context their panels are absolutely positioned against.
+//
+// Declared here, above the responsive blocks, and not further down beside the
+// rest of the dropdown machinery: a media query adds no specificity, so this
+// rule sitting after the breakpoints simply outranked them, and the two-column
+// step below never reached this control. It stayed at its natural ~102px while
+// its neighbour took the rest of the row.
+
+.mhd-filter-item {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+// ---- Dropdown selects -------------------------------------------------------
+
+.mhd-filter-select {
+  flex: 1 1 130px;
+  min-width: 0;
+
+  select {
+    width: 100%;
+    height: v.$mhd-filter-input-height;
+    padding: 0 28px 0 v.$mhd-space-sm;
+    font-size: v.$mhd-font-size-sm;
+    border: 1px solid #dee2e6;
+    border-radius: v.$mhd-radius-md;
+    background-color: #fff;
+    color: inherit;
+    appearance: none;
+    // Custom chevron via inline SVG data-URI.
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23adb5bd' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+    transition: border-color v.$mhd-transition-fast, box-shadow v.$mhd-transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    }
+  }
+}
+
+// ---- Apply button -----------------------------------------------------------
+
+.mhd-filter-apply {
+  flex: 0 0 auto;
+}
+
+// ---- Active filter chips ----------------------------------------------------
+// Dismissible chips rendered below the filter bar, above the ticket list.
+// Each chip is an <a> link — following it removes that filter.
+//
+// The chip itself is a Pill in the input variant (components/_pill.scss): an M3
+// input chip, with the state layer and focus ring that an interactive chip is
+// supposed to have. Only the row that holds them is laid out here.
+
+.mhd-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-xs;
+  margin-bottom: v.$mhd-space-sm;
+}
+
+// ---- Below desktop: two controls to a row -----------------------------------
+
+@include bp.mhd-respond-to('tablet') {
+  .mhd-filter-search,
+  .mhd-filter-select,
+  .mhd-filter-item {
+    flex: 1 1 calc(50% - #{v.$mhd-space-sm});
+  }
+
+  // Trigger button takes the full slot it now sits in so it visually matches
+  // the neighbouring search/select fields.
+  .mhd-filter-dropdown-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@include bp.mhd-respond-to('mobile') {
+  // Only search takes a row to itself: it is a text field that gets typed into,
+  // and half a phone's width is not enough of a subject line to search by. The
+  // selects keep the two-up pairing from the tablet step above — they used to
+  // be overridden back to full width here, which cost a row each and made the
+  // status trigger, whose label is short, look stranded beside all that space.
+  .mhd-filter-search {
+    flex: 1 1 100%;
+  }
+
+  // Apply shares its row with the "More filters" summary rather than taking a
+  // full-width row of its own — the two together are one line instead of two,
+  // and the button reads as the smaller commitment it is.
+  .mhd-filter-apply {
+    margin-left: auto;
+  }
+}
+
+// ---- Secondary filters ("More filters") -------------------------------------
+// A <details> holding the six narrower filters. It ships open — the state that
+// survives without JavaScript — and filters.js folds it below the mobile
+// breakpoint. Above that width the summary is hidden and the group is simply
+// part of the bar, so one markup serves both.
+
+.mhd-filter-more {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+// Folded, the summary is a short link and leaves room beside it for Apply.
+// Open, the group needs the full row back, which pushes Apply below it.
+@include bp.mhd-respond-to('mobile') {
+  .mhd-filter-more:not([open]) {
+    flex: 0 1 auto;
+  }
+}
+
+// The body re-creates the bar's own layout: the controls inside are the same
+// selects, and they should wrap the same way they did before the wrapper
+// existed.
+.mhd-filter-more-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+}
+
+.mhd-filter-more-summary {
+  // Only phones ever see this control; everywhere else the group is open and
+  // the summary would be a toggle for something already on screen.
+  display: none;
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-filter-more-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: v.$mhd-space-xs;
+    padding: v.$mhd-space-xs 0;
+    color: c.$mhd-color-primary;
+    font-size: v.$mhd-font-size-sm;
+    cursor: pointer;
+    list-style: none; // Firefox draws its own marker; the caret below replaces it.
+    user-select: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .mhd-filter-more-caret {
+    transition: transform v.$mhd-transition-fast;
+  }
+
+  .mhd-filter-more[open] .mhd-filter-more-caret {
+    transform: rotate(180deg);
+  }
+
+  // Folded filters still narrow the list, so the count says how many are on.
+  // It reads as a number on a link, which is why the sentence version is in
+  // the markup for screen readers.
+  .mhd-filter-more-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: v.$mhd-radius-full;
+    background: c.$mhd-color-primary;
+    color: c.$mhd-color-text-inverse;
+    font-size: v.$mhd-font-size-xs;
+    font-weight: v.$mhd-font-weight-semibold;
+    line-height: 1;
+  }
+
+  // The body needs breathing room from the summary once it is open.
+  .mhd-filter-more[open] .mhd-filter-more-body {
+    padding-top: v.$mhd-space-sm;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mhd-filter-more-caret {
+    transition: none;
+  }
+}
+
+// ---- Checkbox dropdown infrastructure ---------------------------------------
+// Shared between the status dropdown and any future checkbox-style filters.
+// The .mhd-filter-item that provides their stacking context is declared above,
+// with the other controls that share the bar's row.
+
+// Trigger button — matches the height and border style of .mhd-filter-select.
+.mhd-filter-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  height: v.$mhd-filter-input-height;
+  padding: 0 v.$mhd-space-sm;
+  font-size: v.$mhd-font-size-sm;
+  color: inherit;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: v.$mhd-radius-md;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color v.$mhd-transition-fast, box-shadow v.$mhd-transition-fast;
+
+  &:hover {
+    border-color: #adb5bd;
+  }
+
+  &[aria-expanded="true"],
+  &.is-active {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+  }
+}
+
+// SVG caret — flips when the panel is open.
+.mhd-dropdown-caret {
+  flex-shrink: 0;
+  transition: transform v.$mhd-transition-fast;
+
+  [aria-expanded="true"] & {
+    transform: rotate(180deg);
+  }
+}
+
+// Floating panel — absolute, layered above the ticket list.
+.mhd-filter-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: z.$mhd-z-dropdown;
+  min-width: 180px;
+  padding: v.$mhd-space-xs 0;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: v.$mhd-radius-md;
+  box-shadow: v.$mhd-shadow-card-hover;
+}
+
+// Individual checkbox row inside a dropdown panel.
+// Covers both the spec class and the template class (.mhd-status-option).
+.mhd-filter-checkbox-item,
+.mhd-status-option {
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  padding: 6px v.$mhd-space-sm;
+  font-size: v.$mhd-font-size-sm;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background-color: #f8f9fa;
+  }
+
+  input[type="checkbox"] {
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+}
+
+// ---- Date range block -------------------------------------------------------
+// Wrapper provides its own stacking context; panel is wider than status panel.
+
+.mhd-filter-daterange {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+// Wider override for the date panel.
+//
+// The panel opens from the right edge of its trigger instead of the left. Date
+// range is the last control in the bar at every width — on phones the six
+// secondary filters pair up and it lands in the right-hand column, on desktop
+// it closes the row — so a panel growing rightwards from `left: 0` ran off the
+// screen: 90px past the edge at 1400, 102px at 768. Anchoring the far edge
+// instead keeps it on screen without measuring anything at runtime.
+.mhd-daterange-block {
+  min-width: 0;
+  padding: v.$mhd-space-sm;
+  left: auto;
+  right: 0;
+
+  // Phones can't fit the 340px panel; let it fill the viewport and scroll
+  // vertically so date inputs don't overflow horizontally.
+  @include bp.mhd-respond-to('mobile') {
+    width: calc(100vw - #{v.$mhd-space-md * 2});
+    // Deliberately NOT `max-width: 100%`: percentages resolve against the
+    // containing block, which is the ~99px trigger cell, so that cap undid the
+    // width above and squeezed the panel back to the width of its own button —
+    // which is what clipped the date inputs.
+    max-width: calc(100vw - #{v.$mhd-space-md * 2});
+    max-height: 60vh;
+    overflow-y: auto;
+
+    // On phones, let the inputs reclaim the viewport width since the panel
+    // is full-width anyway.
+    .mhd-daterange-row { grid-template-columns: auto 1fr; }
+    .mhd-date-input    { width: 100%; }
+  }
+}
+
+// Two-column grid: label | input. Input column sized to content so the
+// panel hugs the inputs instead of stretching to the panel's available
+// width — native date pickers don't need more than ~140px.
+.mhd-daterange-row {
+  display: grid;
+  grid-template-columns: auto max-content;
+  align-items: center;
+  gap: v.$mhd-space-xs v.$mhd-space-sm;
+  margin-bottom: v.$mhd-space-xs;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.mhd-daterange-label {
+  font-size: v.$mhd-font-size-xs;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.mhd-date-input {
+  width: 140px;
+  max-width: 100%;
+  height: v.$mhd-filter-input-height;
+  padding: 0 v.$mhd-space-sm;
+  font-size: v.$mhd-font-size-sm;
+  border: 1px solid #dee2e6;
+  border-radius: v.$mhd-radius-md;
+  background-color: #fff;
+  color: inherit;
+  transition: border-color v.$mhd-transition-fast, box-shadow v.$mhd-transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+  }
+}
+
+// ---- Clear all --------------------------------------------------------------
+
+.mhd-filter-clear-all {
+  flex: 0 0 auto;
+  font-size: v.$mhd-font-size-xs;
+  color: #6c757d;
+  text-decoration: none;
+  padding: 2px v.$mhd-space-xs;
+  border-radius: v.$mhd-radius-sm;
+  transition: color v.$mhd-transition-fast, background-color v.$mhd-transition-fast;
+
+  &:hover {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.06);
+    text-decoration: none;
+  }
+}
+
+// ---- Saved views panel ------------------------------------------------------
+// Rendered below the filter form, agents only.
+
+.mhd-savedviews-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+  margin-bottom: v.$mhd-space-sm;
+  padding: v.$mhd-space-xs 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.mhd-saveview-inline {
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+}
+
+.mhd-saveview-name-input {
+  width: 200px;
+}
+
+.mhd-savedviews-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-xs;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mhd-saved-view-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+// The saved view itself is an interactive Pill (components/_pill.scss). Its
+// delete control is the sibling button below — a button, not a chip, and left
+// as one: nesting it inside the link would be invalid and unreachable.
+
+.mhd-saved-view-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: #adb5bd;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color v.$mhd-transition-fast, background-color v.$mhd-transition-fast;
+
+  &:hover {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+  }
+}
+
+// ---- SLA sort link ----------------------------------------------------------
+
+.mhd-sla-sort-link {
+  font-size: v.$mhd-font-size-xs;
+  color: #6c757d;
+  text-decoration: none;
+
+  &:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+  }
+}

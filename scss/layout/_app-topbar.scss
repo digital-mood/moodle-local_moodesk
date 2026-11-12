@@ -1,0 +1,171 @@
+// =============================================================================
+// layout/_app-topbar.scss
+//
+// Application-shell top bar: navigation toggle, notifications bell and user
+// menu. Search and app-grid from the mockups are omitted (would be new
+// features). Scoped under `.moodesk-app`; consumes F1 tokens.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+@use '../components/avatar' as av;
+
+.moodesk-app__topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--mhd-space-md);
+  height: var(--mhd-topbar-height);
+  padding: 0 var(--mhd-space-md);
+  background: var(--mhd-color-surface);
+  border-bottom: 1px solid var(--mhd-color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  @include bp.mhd-respond-to('mobile') {
+    padding: 8px;
+  }
+}
+
+.moodesk-app__nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mhd-radius-md);
+  background: transparent;
+  color: var(--mhd-color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+    color: var(--mhd-color-text);
+  }
+}
+
+.moodesk-app__topbar-spacer {
+  flex: 1 1 auto;
+}
+
+// ── Notifications bell ────────────────────────────────────────────────────────
+.moodesk-app__notif {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--mhd-radius-md);
+  color: var(--mhd-color-text-muted);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+    color: var(--mhd-color-text);
+    text-decoration: none;
+  }
+}
+
+.moodesk-app__notif-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--mhd-radius-full);
+  background: var(--mhd-color-danger);
+  color: var(--mhd-color-text-inverse);
+  font-size: 10px;
+  font-weight: var(--mhd-font-weight-bold);
+  line-height: 16px;
+  text-align: center;
+}
+
+// ── User menu (native <details>) ──────────────────────────────────────────────
+.moodesk-app__usermenu {
+  position: relative;
+}
+
+.moodesk-app__user {
+  display: flex;
+  align-items: center;
+  gap: var(--mhd-space-sm);
+  padding: var(--mhd-space-xs) var(--mhd-space-sm);
+  border-radius: var(--mhd-radius-pill);
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+  }
+}
+
+.moodesk-app__user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.moodesk-app__user-name {
+  font-size: var(--mhd-font-size-sm);
+  font-weight: var(--mhd-font-weight-semibold);
+  color: var(--mhd-color-text);
+}
+
+.moodesk-app__user-role {
+  font-size: var(--mhd-font-size-xs);
+  color: var(--mhd-color-text-muted);
+}
+
+// The wrapper is the frame, not the image inside it. This rule used to address
+// `img` alone, which held for a user with a photograph and did nothing at all
+// for one without: core sends a `.userinitials` span instead, and with nothing
+// sizing it the avatar in the shell visibly shrank. The frame sizes whichever
+// of the two arrives — see components/_avatar.scss.
+.moodesk-app__user-avatar {
+  @include av.mhd-avatar-frame;
+}
+
+.moodesk-app__usermenu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 188px;
+  padding: var(--mhd-space-xs);
+  background: var(--mhd-color-surface);
+  border: 1px solid var(--mhd-color-border);
+  border-radius: var(--mhd-radius-md);
+  box-shadow: var(--mhd-shadow-card);
+  z-index: 20;
+}
+
+.moodesk-app__usermenu-item {
+  display: block;
+  padding: var(--mhd-space-sm);
+  border-radius: var(--mhd-radius-sm);
+  color: var(--mhd-color-text);
+  font-size: var(--mhd-font-size-sm);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--mhd-color-surface-muted);
+    text-decoration: none;
+  }
+}
+
+// On small screens, drop the textual user info; keep the avatar. Tied to the
+// same step as the navigation drawer: the topbar loses its labels exactly when
+// the sidebar stops being a rail.
+@include bp.mhd-respond-to('tablet') {
+  .moodesk-app__user-info {
+    display: none;
+  }
+}

@@ -1,0 +1,21 @@
+// =============================================================================
+// vendors/_moodle-overrides.scss
+// Targeted overrides for Moodle core and Bootstrap styles.
+//
+// Rules here must be carefully scoped to avoid breaking Moodle's UI.
+// Always prefer adding product-specific classes over overriding global selectors.
+// Document the reason for each override.
+// =============================================================================
+
+// Moodle's admin layout adds bottom padding to .main-inner that can create
+// excessive whitespace below the ticket list on the admin page layout.
+// Scope this override tightly to only the plugin's admin pages.
+[data-page="local-moodesk-index"],
+[data-page="local-moodesk-view"],
+[data-page="local-moodesk-dashboard"] {
+  // Reduce Moodle's default page bottom padding on plugin pages.
+  // This prevents a large empty area below the ticket list.
+  #page-content {
+    padding-bottom: 0;
+  }
+}

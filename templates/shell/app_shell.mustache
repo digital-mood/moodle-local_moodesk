@@ -1,0 +1,102 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/shell/app_shell
+
+    Standalone mooDesk application shell: sidebar + top bar + content slot,
+    mounted on Moodle's embedded pagelayout. The existing per-screen content is
+    injected verbatim into the content slot, so screens keep their own markup.
+
+    Context variables:
+      * collapsed        - True to start with the sidebar collapsed (icon rail)
+      * mainlabel        - Accessible label for the content region
+      * skiplabel        - "Skip to content" label
+      * closedrawerlabel - Accessible label for the mobile drawer backdrop
+      * hasnotices       - True when plugins added notices (hook shell_notices)
+      * notices          - [{html}] rendered notices, shown above the content
+      * content          - Raw inner page HTML (rendered elsewhere)
+      * (plus everything consumed by the sidebar and topbar partials)
+
+    Example context (json):
+    {
+      "collapsed": false,
+      "mainlabel": "mooDesk content",
+      "skiplabel": "Skip to content",
+      "closedrawerlabel": "Close navigation",
+      "content": "<h2>Dashboard</h2>",
+      "navlabel": "mooDesk navigation",
+      "brand": {
+        "url": "/local/moodesk/index.php",
+        "name": "mooDesk",
+        "tagline": "Support desk"
+      },
+      "navgroups": [
+        {
+          "key": "operation",
+          "label": "Operation",
+          "items": [
+            {"key": "dashboard", "label": "Dashboard", "url": "/local/moodesk/dashboard.php", "icon": "dashboard", "active": true, "external": false}
+          ]
+        }
+      ],
+      "footeritems": [
+        {"key": "settings", "label": "Settings", "url": "/admin/settings.php", "icon": "settings", "active": false, "external": true}
+      ],
+      "returnurl": "/my/",
+      "returnlabel": "Return to Moodle",
+      "togglelabel": "Toggle navigation",
+      "notifications": {
+        "url": "/message/output/popup/notifications.php",
+        "label": "Notifications",
+        "hascount": true,
+        "countlabel": "3"
+      },
+      "user": {
+        "fullname": "Ada Lovelace",
+        "rolelabel": "Agent",
+        "avatar": "<span class=\"userpicture\"></span>",
+        "menulabel": "User menu",
+        "profileurl": "/user/profile.php",
+        "profilelabel": "Profile",
+        "preferencesurl": "/user/preferences.php",
+        "preferenceslabel": "Preferences",
+        "logouturl": "/login/logout.php",
+        "logoutlabel": "Log out"
+      }
+    }
+}}
+{{> local_moodesk/shell/icons }}
+<div class="moodesk-app{{#collapsed}} moodesk-app--collapsed{{/collapsed}}" data-region="moodesk-app">
+    <a class="moodesk-app__skip-link" href="#moodesk-app-content">{{skiplabel}}</a>
+    {{> local_moodesk/shell/sidebar }}
+    <div class="moodesk-app__backdrop" data-region="moodesk-drawer-backdrop" tabindex="-1" aria-label="{{closedrawerlabel}}"></div>
+    <div class="moodesk-app__main">
+        {{> local_moodesk/shell/topbar }}
+        <main id="moodesk-app-content" class="moodesk-app__content" tabindex="-1" aria-label="{{mainlabel}}">
+            {{#hasnotices}}
+            <div class="moodesk-app__notices" data-region="moodesk-shell-notices">
+                {{#notices}}{{{html}}}{{/notices}}
+            </div>
+            {{/hasnotices}}
+            {{{ content }}}
+        </main>
+    </div>
+    {{! Transient confirmations (local_moodesk/toast). Present on every product
+        screen so the live region exists before the first message arrives —
+        a region injected together with its content is not reliably announced. }}
+    <div class="mhd-toast-region" data-region="mhd-toast-region" aria-live="polite" aria-atomic="false"></div>
+</div>

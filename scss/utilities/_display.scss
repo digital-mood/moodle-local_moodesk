@@ -1,0 +1,21 @@
+// =============================================================================
+// utilities/_display.scss
+// Display utility classes.
+// =============================================================================
+
+.mhd-d-flex        { display: flex; }
+.mhd-d-inline-flex { display: inline-flex; }
+.mhd-d-block       { display: block; }
+.mhd-d-inline      { display: inline; }
+.mhd-d-none        { display: none; }
+
+// Flex direction helpers.
+.mhd-flex-col  { flex-direction: column; }
+.mhd-flex-row  { flex-direction: row; }
+.mhd-flex-wrap { flex-wrap: wrap; }
+
+// Flex alignment helpers.
+.mhd-align-center  { align-items: center; }
+.mhd-justify-start { justify-content: flex-start; }
+.mhd-justify-end   { justify-content: flex-end; }
+.mhd-justify-between { justify-content: space-between; }

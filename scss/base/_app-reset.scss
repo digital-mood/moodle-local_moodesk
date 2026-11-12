@@ -1,0 +1,95 @@
+// =============================================================================
+// base/_app-reset.scss
+//
+// Scoped reset for the mooDesk application shell.
+//
+// PURPOSE: when product screens render in Moodle's `embedded` pagelayout
+// (phase F2), the active theme's Bootstrap base styles are still loaded and
+// would bleed into our UI. This reset establishes a predictable, theme-neutral
+// canvas under `.moodesk-app` so the shell and components render consistently
+// across Boost / Classic and Moodle 4.5–5.2 — the critical "no bleed" piece.
+//
+// SCOPING: everything is under `.moodesk-app`, which is only rendered by the
+// shell (phase F2, ui_mode = app). On legacy screens this matches nothing, so
+// F1 stays visually inert and reversible.
+//
+// DELIBERATELY CONSERVATIVE: this resets the canvas, box model and base
+// typography only. It does NOT reset lists, tables, forms or editor content —
+// those are owned by components and by Moodle's form/editor markup, and are
+// addressed when screens migrate into the shell (F3) and at polish time (F6).
+// =============================================================================
+
+.moodesk-app {
+  // Theme-neutral canvas + base typography, all driven by tokens.
+  background-color: var(--mhd-color-canvas);
+  color: var(--mhd-color-text);
+  font-family: var(--mhd-font-family);
+  font-size: var(--mhd-font-size-md);
+  line-height: var(--mhd-line-height);
+
+  // Predictable box model for every shell element.
+  &,
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  // Headings: neutralise Bootstrap's heading margins/weights; the shell sets
+  // its own scale per component.
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+    color: inherit;
+    font-weight: var(--mhd-font-weight-semibold);
+    line-height: var(--mhd-line-height-tight);
+  }
+
+  // Paragraph rhythm.
+  p {
+    margin-top: 0;
+    margin-bottom: var(--mhd-space-md);
+  }
+
+  // Links adopt the brand colour.
+  //
+  // Two things have to be true at once here, and the second was learned the
+  // hard way. A button that happens to be an <a> is not a link, and neither is
+  // a chip: this rule outranked their own colour by one element (0,1,1 against
+  // 0,1,0), so `+ New department` rendered its label and icon in the same blue
+  // as its container — 1.00:1, an invisible action. Hence the exclusions.
+  //
+  // But writing them as :not(.a):not(.b):not(.c) took the selector from (0,1,1)
+  // to (0,4,1), and that is a different bug. Moodle renders markup inside this
+  // shell that we do not write and cannot enumerate, and some of it colours its
+  // own links against its own background — the pagination's current page is
+  // `.active > .page-link`, white on blue, at (0,2,0). At (0,1,1) Bootstrap won
+  // that and the page number was white. At (0,4,1) this rule won, painted the
+  // number brand blue on Moodle's blue, and the current page dropped to 1.04:1.
+  //
+  // :where() takes specificity zero, so the exclusions cost nothing and the
+  // selector stays (0,1,1) — the weight a base reset should carry. Anything
+  // Moodle ships with an opinion of its own outranks it again, which is the
+  // behaviour that was never meant to change. Adding another :not() would have
+  // fixed the pagination and left the next component to find the same edge.
+  //
+  // The components also self-qualify their variants, so neither depends on this
+  // file staying well behaved.
+  a:not(:where(.mhd-btn, .mhd-pill, .btn, .page-link)) {
+    color: var(--mhd-color-primary);
+
+    &:hover {
+      color: var(--mhd-color-primary-strong);
+    }
+  }
+
+  // Media should never overflow its container.
+  img,
+  svg {
+    max-width: 100%;
+  }
+}

@@ -1,0 +1,382 @@
+// =============================================================================
+// components/_pill.scss
+// The Pill — mooDesk's one chip component. Material Design 3 is its spec.
+//
+// SINGLE SOURCE OF TRUTH. Every status label, badge, tag and chip in the
+// product is `.mhd-pill` plus exactly one colour variant. Nothing else in the
+// codebase may declare a pill's geometry or typography.
+//
+// ── Where the numbers come from ──────────────────────────────────────────────
+// Every dimension below is a Material Design 3 chip token, taken from the
+// generated token sources that back m3.material.io (material-components/
+// material-web, tokens/versions/v0_192) rather than measured off a screenshot:
+//
+//   md.comp.assist-chip.container-height ............ 32px
+//   md.comp.assist-chip.container-shape ............. md.sys.shape.corner-small = 8px
+//   md.comp.assist-chip.label-text-size ............. md.sys.typescale.label-large-size = 0.875rem
+//   md.comp.assist-chip.label-text-line-height ...... label-large-line-height = 1.25rem
+//   md.comp.assist-chip.label-text-weight ........... md.ref.typeface.weight-medium = 500
+//
+// One deliberate departure: the label weight is 300, not the 500 the token
+// specifies. Everything else — height, shape, typescale, spacing, icon and
+// outline sizing, state layers — stays on spec.
+//   md.sys.typescale.label-large-tracking ........... 0.00625rem
+//   md.comp.assist-chip.leading-space / trailing-space  16px
+//   md.comp.assist-chip.with-leading-icon-leading-space 8px
+//   md.comp.assist-chip.icon-label-space ............ 8px
+//   md.comp.assist-chip.with-icon-icon-size ......... 18px
+//   md.comp.assist-chip.flat-outline-width .......... 1px
+//   md.sys.state.hover / focus / pressed-state-layer-opacity  0.08 / 0.12 / 0.12
+//
+// Input chips carry the same container-height and corner-small, so an
+// interactive chip and a status pill line up on the same row by construction.
+//
+// ── The contract ─────────────────────────────────────────────────────────────
+//   .mhd-pill               geometry + typography. Identical everywhere.
+//   .mhd-pill--<variant>    background-color, color, border-color. Nothing else.
+//   .mhd-pill__label        the label slot. Wrap free text in it so a long
+//                           category or department name truncates instead of
+//                           stretching the row.
+//   .mhd-pill__icon         an 18px leading or trailing icon slot.
+//   .mhd-pill--interactive  M3 state layer + focus ring. ONLY for elements that
+//                           are genuinely actionable (<a>, <button>). A status
+//                           label is not one, and must never carry it.
+//
+// A variant that touches height, font-size, line-height, font-weight,
+// border-radius, padding or icon size is a bug: two pills side by side would
+// stop lining up, which is the whole point of having one component.
+//
+// Colour tokens live in abstracts/_colors.scss — this file defines no raw hex.
+// =============================================================================
+
+@use 'sass:color';
+@use '../abstracts/colors' as c;
+
+// M3 chip tokens. Named here so a reader can see the spec and the CSS together.
+$m3-container-height:     32px;    // md.comp.*-chip.container-height
+$m3-container-shape:      8px;     // md.sys.shape.corner-small
+$m3-label-size:           0.875rem; // md.sys.typescale.label-large-size
+$m3-label-line-height:    1.25rem; // md.sys.typescale.label-large-line-height
+$label-weight:            300;     // Product decision. M3 token is 500
+                                   // (md.ref.typeface.weight-medium).
+$m3-label-tracking:       0.00625rem; // md.sys.typescale.label-large-tracking
+$m3-space:                16px;    // leading-space / trailing-space
+$m3-icon-space:           8px;     // with-leading-icon-leading-space
+$m3-icon-label-space:     8px;     // icon-label-space
+$m3-icon-size:            18px;    // with-icon-icon-size
+$m3-outline-width:        1px;     // flat-outline-width
+$m3-hover-opacity:        0.08;    // md.sys.state.hover-state-layer-opacity
+$m3-focus-opacity:        0.12;    // md.sys.state.focus-state-layer-opacity
+$m3-pressed-opacity:      0.12;    // md.sys.state.pressed-state-layer-opacity
+
+// Free text in a pill has to stop somewhere. Not an M3 token — M3 has no
+// opinion on how long a label may be — but a property of the component rather
+// than of any screen, so it lives here and applies everywhere.
+$label-max-width:         200px;
+
+// ── Base ─────────────────────────────────────────────────────────────────────
+
+.mhd-pill {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $m3-icon-label-space;
+  // min-height rather than height: the geometry is exactly 32px for every real
+  // label, and a pill that is somehow given more than one line grows instead of
+  // clipping its own text.
+  min-height: $m3-container-height;
+  padding: 0 $m3-space;
+  border: $m3-outline-width solid transparent;
+  border-radius: $m3-container-shape;
+  font-size: $m3-label-size;
+  font-weight: $label-weight;
+  line-height: $m3-label-line-height;
+  letter-spacing: $m3-label-tracking;
+  white-space: nowrap;
+  vertical-align: middle;
+  // Some pills are links. A pill never reads as body-copy link text.
+  text-decoration: none;
+}
+
+// The label slot.
+.mhd-pill__label {
+  min-width: 0;
+  max-width: $label-max-width;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// An 18px icon box. Decorative by default — mark it aria-hidden in the markup
+// unless the icon is the only thing carrying the meaning.
+.mhd-pill__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: $m3-icon-size;
+  height: $m3-icon-size;
+  font-size: $m3-icon-size;
+  line-height: 1;
+}
+
+// M3 tightens the padding on whichever side carries an icon.
+.mhd-pill.mhd-pill--leading-icon  { padding-left: $m3-icon-space; }
+.mhd-pill.mhd-pill--trailing-icon { padding-right: $m3-icon-space; }
+
+// ── Interactive state layer ──────────────────────────────────────────────────
+// M3 paints hover/focus/pressed as a translucent layer of the label colour over
+// the container. Only for elements that actually do something when activated:
+// adding this to a status label would promise an interaction that does not
+// exist, which is worse than an inconsistent pill.
+
+.mhd-pill.mhd-pill--interactive {
+  position: relative;
+  cursor: pointer;
+  // Keep the state layer from painting over anything outside the chip.
+  isolation: isolate;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: currentcolor;
+    opacity: 0;
+    pointer-events: none;
+    // Behind the label, in front of the container. Without this the layer
+    // paints over the text and every hover, focus and press quietly costs the
+    // label 8-12% of its contrast. `isolation: isolate` on the element keeps
+    // the negative index inside this stacking context.
+    z-index: -1;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover::after { opacity: $m3-hover-opacity; }
+
+  &:active::after { opacity: $m3-pressed-opacity; }
+
+  // :focus-visible only — a mouse click on a chip should not leave a ring
+  // behind, but a keyboard user must always be able to see where they are.
+  &:focus-visible {
+    outline: 3px solid c.$mhd-color-focus;
+    outline-offset: 2px;
+
+    &::after { opacity: $m3-focus-opacity; }
+  }
+
+  &:hover,
+  &:focus {
+    text-decoration: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after { transition: none; }
+  }
+}
+
+// ── In-chip remove control ───────────────────────────────────────────────────
+// Where the chip itself is not actionable but carries one action — the
+// department and team chips on an agent's record, each wrapping a POST form.
+// The container stays a plain <div>; only the button is interactive, which is
+// the correct semantics and the reason this is not .mhd-pill--interactive.
+
+// The form is plumbing, not layout: it must not become a flex item between the
+// label and the button.
+.mhd-pill__form {
+  display: contents;
+}
+
+.mhd-pill__remove {
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: c.$mhd-color-danger;
+  }
+
+  &:focus-visible {
+    outline: 3px solid c.$mhd-color-focus;
+    outline-offset: 2px;
+    border-radius: 50%;
+  }
+}
+
+// ── Semantic variants — filled ───────────────────────────────────────────────
+// Every pairing below clears WCAG AA (4.5:1) at the label size — verified, not
+// assumed. Amber, cyan and orange carry dark text for that reason.
+
+.mhd-pill.mhd-pill--neutral {
+  background-color: c.$mhd-status-new;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--primary {
+  background-color: c.$mhd-color-primary;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--info {
+  background-color: c.$mhd-color-info;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--success {
+  background-color: c.$mhd-color-success;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--warning {
+  background-color: c.$mhd-color-warning;
+  color: c.$mhd-color-text;
+}
+
+.mhd-pill.mhd-pill--danger {
+  background-color: c.$mhd-color-danger;
+  color: c.$mhd-color-text-inverse;
+}
+
+// ── Quiet variants — tinted ──────────────────────────────────────────────────
+// For labels that describe rather than alert. The M3 equivalent of a container
+// colour with its on-container pair: the fill is the hue at low opacity, the
+// label is the same hue darkened until it is legible on that fill.
+
+.mhd-pill.mhd-pill--muted {
+  background-color: c.$mhd-color-surface-muted;
+  color: c.$mhd-color-text;
+}
+
+.mhd-pill.mhd-pill--dept {
+  background-color: c.$mhd-dept-pill-bg;
+  color: c.$mhd-dept-pill-color;
+}
+
+.mhd-pill.mhd-pill--link {
+  background-color: c.$mhd-color-primary-soft;
+  color: c.$mhd-color-primary-strong;
+}
+
+.mhd-pill.mhd-pill--soft-success {
+  background-color: rgba(c.$mhd-color-success, 0.12);
+  color: color.adjust(c.$mhd-color-success, $lightness: -10%);
+}
+
+// Amber as text fails on white at any size, so the label uses the darkened
+// token minted for exactly this case — see abstracts/_colors.scss.
+.mhd-pill.mhd-pill--soft-warning {
+  background-color: rgba(c.$mhd-color-warning, 0.18);
+  color: c.$mhd-color-warning-text;
+}
+
+.mhd-pill.mhd-pill--soft-danger {
+  background-color: rgba(c.$mhd-color-danger, 0.12);
+  color: color.adjust(c.$mhd-color-danger, $lightness: -10%);
+}
+
+// ── Outlined ─────────────────────────────────────────────────────────────────
+// A container, not a state: the department and team chips on an agent's record.
+
+.mhd-pill.mhd-pill--outline {
+  background-color: c.$mhd-color-surface;
+  color: c.$mhd-color-text;
+  border-color: c.$mhd-color-border-strong;
+}
+
+// ── Input chip ───────────────────────────────────────────────────────────────
+// M3's input chip: a value the user put there and can take away again. The one
+// genuinely interactive chip in mooDesk — an applied filter, with a remove
+// affordance. Always paired with .mhd-pill--interactive.
+
+.mhd-pill.mhd-pill--input {
+  background-color: c.$mhd-dept-pill-bg;
+  color: c.$mhd-dept-pill-color;
+  border-color: c.$mhd-color-border-strong;
+
+  // Following this chip destroys something — it drops the filter. The state
+  // layer alone says "clickable" and not "clickable and destructive", so the
+  // remove glyph takes the danger colour on approach. Colour is the hint, never
+  // the message: the accessible name already says "Remove filter: X".
+  &:hover .mhd-pill__icon,
+  &:focus-visible .mhd-pill__icon {
+    color: c.$mhd-color-danger;
+  }
+}
+
+// ── Ticket status scale ──────────────────────────────────────────────────────
+// Indexed to \local_moodesk\domain\ticket::STATUS_* — the number in the class is
+// the stored value, which is why these are a scale and not semantic names.
+
+.mhd-pill.mhd-pill--status-0 {                                  // new
+  background-color: c.$mhd-status-new;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--status-1 {                                  // open
+  background-color: c.$mhd-status-open;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--status-2 {                                  // pending — amber
+  background-color: c.$mhd-status-pending;
+  color: c.$mhd-color-text;
+}
+
+.mhd-pill.mhd-pill--status-3 {                                  // on hold
+  background-color: c.$mhd-status-on-hold;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--status-4 {                                  // resolved
+  background-color: c.$mhd-status-resolved;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--status-5 {                                  // closed
+  background-color: c.$mhd-status-closed;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--status-6 {                                  // in progress — cyan
+  background-color: c.$mhd-status-inprogress;
+  color: c.$mhd-color-text;
+}
+
+// ── Inbound sender authentication (SEC-04B) ──────────────────────────────────
+// Three variants for four verdicts: `unverifiable` and `unsupported` share a
+// look because they read the same to an agent — nobody could tell them apart
+// and nobody should have to. The difference between them is an operator's
+// problem and lives on the health page.
+//
+// The pill renders for every ticket opened by an evaluated email, the verified
+// case included. That is on purpose: if only problems were marked, the absence
+// of a pill would mean either "verified" or "never checked", and an agent
+// cannot tell those apart at a glance.
+
+// ── Ticket priority scale ────────────────────────────────────────────────────
+// Indexed to \local_moodesk\domain\ticket::PRIORITY_*.
+
+.mhd-pill.mhd-pill--priority-0 {                                // low
+  background-color: c.$mhd-priority-low;
+  color: c.$mhd-color-text-inverse;
+}
+
+.mhd-pill.mhd-pill--priority-1 {                                // normal — cyan
+  background-color: c.$mhd-priority-normal;
+  color: c.$mhd-color-text;
+}
+
+// Orange took white text until this refactor, at 2.57:1 — the one pairing in
+// the product that failed AA outright. Same fill, dark label, 5.71:1.
+.mhd-pill.mhd-pill--priority-2 {                                // high — orange
+  background-color: c.$mhd-priority-high;
+  color: c.$mhd-color-text;
+}
+
+.mhd-pill.mhd-pill--priority-3 {                                // urgent
+  background-color: c.$mhd-priority-urgent;
+  color: c.$mhd-color-text-inverse;
+}

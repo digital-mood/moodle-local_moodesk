@@ -1,0 +1,64 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/composer_attachment_list
+
+    The files waiting in the reply composer's draft area, one row each.
+
+    Rendered by amd/src/composer_attachments.js from what the server reports the
+    draft holds — never from what was just clicked, so a failed upload or a
+    refused delete leaves the list telling the truth. With an empty draft this
+    template is not rendered at all.
+
+    Context variables required for this template:
+    * files - array of files in the draft
+      * filename      - name as stored
+      * filepath      - path within the draft area, normally '/'
+      * sizeformatted - human-readable size
+      * url           - draft file URL, for checking a file before sending
+
+    Example context (json):
+    {
+        "files": [
+            {
+                "filename": "screenshot.png",
+                "filepath": "/",
+                "sizeformatted": "241.2KB",
+                "url": "https://example.com/draftfile.php/5/user/draft/1/screenshot.png"
+            }
+        ]
+    }
+}}
+<ul class="mhd-composer__files">
+  {{#files}}
+  <li class="mhd-composer__file">
+    <svg class="mhd-composer__file-icon" aria-hidden="true" focusable="false">
+      <use href="#mhd-icon-file"></use>
+    </svg>
+    <a href="{{url}}" class="mhd-composer__file-name" target="_blank" rel="noreferrer noopener"
+       title="{{filename}}">{{filename}}</a>
+    <span class="mhd-composer__file-size">{{sizeformatted}}</span>
+    <button type="button" class="mhd-composer__file-remove"
+            data-action="mhd-remove-attachment"
+            data-filename="{{filename}}"
+            data-filepath="{{filepath}}"
+            aria-label="{{#str}} attachment_remove, local_moodesk, {{filename}} {{/str}}">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </li>
+  {{/files}}
+</ul>

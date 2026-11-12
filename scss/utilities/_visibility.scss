@@ -1,0 +1,25 @@
+// =============================================================================
+// utilities/_visibility.scss
+// Visibility utility classes.
+// =============================================================================
+
+@use '../abstracts/mixins' as m;
+
+// Hide from sight, keep for screen readers. The one place this pattern is
+// spelled out is abstracts/mixins; everything that needs it goes through here
+// or through the mixin, so there is a single definition to correct.
+.mhd-sr-only { @include m.mhd-sr-only; }
+
+// Hide but preserve layout space (opacity only).
+.mhd-invisible { visibility: hidden; }
+
+// Show / hide with display toggle.
+.mhd-hidden  { display: none !important; }
+.mhd-visible { display: block !important; }
+
+// A previous set of breakpoint-scoped helpers — .mhd-hide-mobile,
+// .mhd-hide-below-desktop and .mhd-show-below-desktop — lived here and was used
+// by nothing: no template, no AMD module. They shipped in every stylesheet
+// anyway, and each one was a second place where a layout decision could be made
+// without the module that owns it knowing. Screens hide things at a breakpoint
+// from their own partial instead. Removed rather than kept "just in case".

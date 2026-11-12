@@ -1,0 +1,313 @@
+// =============================================================================
+// modules/_health.scss
+// System Health page (OBS-04): overall state, per-source strip, incident cards.
+//
+// Incidents are cards, not table rows. Each carries a severity, a code, a
+// free-text message of unpredictable length, three metadata values and two
+// actions — seven columns of that reads badly at any width and collapses below
+// tablet. Cards need no responsive rescue because they never had columns to
+// lose; only the source strip regrids.
+//
+// Severity colour reuses the priority scale rather than minting a parallel one:
+// warning/error/critical map onto the same visual weights the product already
+// teaches for low/high/urgent.
+//
+// Colours come from the SCSS tokens in abstracts/, not from the
+// `var(--mhd-color-*)` custom properties the dashboard uses: those are declared
+// on `.moodesk-app` and this page renders outside the shell, where the var()
+// would resolve to nothing and take the border with it.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors' as c;
+@use '../abstracts/breakpoints' as bp;
+@use 'sass:color';
+
+// The explanatory line under the title — present so the active window is
+// discoverable without reading the docs, since "why is yesterday's failure gone"
+// is the first question a derived-state page invites — is the page header's
+// description now. It needed a negative top margin and a font size of its own
+// only because it sat OUTSIDE the header it belonged to.
+
+// ── Overall state ────────────────────────────────────────────────────────────
+
+// The overall state is a Pill in one of the soft variants — see
+// components/_pill.scss.
+
+// ── Source strip ─────────────────────────────────────────────────────────────
+// All four sources always render. A page that only lists problems cannot tell a
+// healthy source from one nobody checked.
+
+.mhd-health-sources {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: v.$mhd-space-md;
+  margin: 0 0 v.$mhd-space-xl;
+  padding: 0;
+  list-style: none;
+
+  @include bp.mhd-respond-to('below-desktop') {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include bp.mhd-respond-to('mobile') {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mhd-health-source {
+  display: flex;
+  flex-direction: column;
+  gap: v.$mhd-space-xs;
+  padding: v.$mhd-space-md;
+  border: 1px solid c.$mhd-color-border;
+  border-left-width: 3px;
+  border-radius: v.$mhd-radius-md;
+  background: c.$mhd-color-surface;
+
+  &--ok {
+    border-left-color: c.$mhd-status-resolved;
+  }
+
+  &--issues {
+    border-left-color: c.$mhd-priority-urgent;
+  }
+
+  .mhd-health-source-label {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.3;
+  }
+
+  .mhd-health-source-status {
+    font-size: 0.8125rem;
+    color: c.$mhd-color-text-muted;
+  }
+
+  &--issues .mhd-health-source-status {
+    color: c.$mhd-priority-urgent;
+    font-weight: 600;
+  }
+}
+
+// ── Incident cards ───────────────────────────────────────────────────────────
+
+.mhd-health-incidents {
+  display: flex;
+  flex-direction: column;
+  gap: v.$mhd-space-md;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mhd-health-incident {
+  padding: v.$mhd-space-lg;
+  border: 1px solid c.$mhd-color-border;
+  border-left-width: 4px;
+  border-radius: v.$mhd-radius-lg;
+  background: c.$mhd-color-surface;
+
+  &--warning  { border-left-color: c.$mhd-priority-normal; }
+  &--error    { border-left-color: c.$mhd-priority-high; }
+  &--critical { border-left-color: c.$mhd-priority-urgent; }
+
+  // Acknowledged: still listed, visibly quieter. Silencing the alert is not the
+  // same as hiding the problem, so it recedes rather than disappearing.
+  &--acknowledged {
+    background: c.$mhd-color-surface-muted;
+    border-left-style: dashed;
+  }
+}
+
+.mhd-health-incident-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-sm;
+  margin-bottom: v.$mhd-space-sm;
+}
+
+.mhd-health-severity {
+  padding: 2px v.$mhd-space-sm;
+  border-radius: v.$mhd-radius-sm;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  &--warning {
+    background: rgba(c.$mhd-priority-normal, 0.16);
+    color: color.adjust(c.$mhd-priority-normal, $lightness: -25%);
+  }
+
+  &--error {
+    background: rgba(c.$mhd-priority-high, 0.16);
+    color: color.adjust(c.$mhd-priority-high, $lightness: -12%);
+  }
+
+  &--critical {
+    background: c.$mhd-priority-urgent;
+    color: c.$mhd-color-text-inverse;
+  }
+}
+
+.mhd-health-incident-source {
+  font-size: 0.875rem;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-health-ack-flag {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-health-incident-message {
+  margin: 0 0 v.$mhd-space-xs;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  // Exception text can arrive as one unbroken run; let it wrap rather than
+  // widen the card past the page.
+  overflow-wrap: anywhere;
+}
+
+.mhd-health-incident-code {
+  display: inline-block;
+  margin-bottom: v.$mhd-space-md;
+  font-size: 0.8125rem;
+  color: c.$mhd-color-text-muted;
+  overflow-wrap: anywhere;
+}
+
+.mhd-health-incident-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: v.$mhd-space-md;
+  margin: 0 0 v.$mhd-space-md;
+
+  @include bp.mhd-respond-to('tablet') {
+    grid-template-columns: 1fr;
+    gap: v.$mhd-space-sm;
+  }
+
+  dt {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: c.$mhd-color-text-muted;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+}
+
+.mhd-health-incident-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-sm;
+}
+
+// ── Inbound sender authentication (SEC-04B) ──────────────────────────────────
+// A report, and it stays one. The temptation on a page like this is a chart per
+// verdict; what an operator needs is six numbers, a window and a yes/no about
+// whether the strict policy can be armed. Anything more turns a health page
+// into a monitoring product, which this stream is explicitly not.
+//
+// The counts sit in a wrapping row rather than a table: six short label/value
+// pairs collapse gracefully on a phone, whereas a six-column table does not,
+// and there is no cross-row comparison a table would buy.
+
+.mhd-health-senderauth {
+  margin: v.$mhd-space-lg 0 0;
+  padding: v.$mhd-space-md;
+  border: 1px solid c.$mhd-color-border;
+  border-radius: v.$mhd-radius-md;
+  background-color: c.$mhd-color-surface;
+}
+
+.mhd-health-senderauth-title {
+  margin: 0 0 v.$mhd-space-sm;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.mhd-health-senderauth-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: v.$mhd-space-sm;
+  margin: 0 0 v.$mhd-space-md;
+
+  @include bp.mhd-respond-to('tablet') {
+    grid-template-columns: 1fr;
+  }
+
+  dt {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: c.$mhd-color-text-muted;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
+.mhd-health-senderauth-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-sm;
+  margin: 0 0 v.$mhd-space-md;
+  padding: 0;
+  list-style: none;
+}
+
+.mhd-health-senderauth-count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 8rem;
+  flex: 1 1 8rem;
+  padding: v.$mhd-space-sm;
+  border: 1px solid c.$mhd-color-border;
+  border-radius: v.$mhd-radius-sm;
+  background-color: c.$mhd-color-surface-muted;
+}
+
+.mhd-health-senderauth-label {
+  font-size: 0.75rem;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-health-senderauth-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+// The one line that answers the question the section exists for. Colour is the
+// hint and never the message: both variants say in words whether the strict
+// policy can be armed.
+.mhd-health-senderauth-verdict {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.mhd-health-senderauth-verdict--ok {
+  color: c.$mhd-color-success;
+}
+
+.mhd-health-senderauth-verdict--pending {
+  color: c.$mhd-color-text-muted;
+}

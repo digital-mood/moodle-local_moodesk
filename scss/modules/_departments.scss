@@ -1,0 +1,70 @@
+// =============================================================================
+// modules/_departments.scss
+// Department administration — the list page.
+//
+// Almost nothing. The table is the product's table, the card is the product's
+// card, and both come whole from components/_datatable.scss: surface, header,
+// row height, cell padding, hover, empty state, and the two-column card with
+// its title, its status and its indented metadata.
+//
+// What is left is the one thing only this screen knows — that its two metadata
+// values are short enough to share a line on a tablet, and not on a phone.
+//
+// The row becomes a card below 992px because it carries three controls, which
+// is the product-wide rule: controls become cards, data scrolls.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/breakpoints' as bp;
+@use '../components/datatable'  as dt;
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-admin-departments .mhd-datatable-surface {
+    @include dt.mhd-datatable-as-cards;
+
+    //   [◉] Support                            [ Active ]
+    //       Members 5              SLA Custom
+    //   ─────────────────────────────────────────────────
+    //       [edit] [members] [archive]
+    //
+    // The pattern would give each of these a line of its own. A member count
+    // and an SLA marker are three words between them, and a tablet has the room
+    // — so they pair up at the same two edges the name and the status use above
+    // them, and the card is a line shorter.
+    .mhd-dept-members {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .mhd-dept-sla {
+      grid-column: 2;
+      grid-row: 2;
+      justify-self: end;
+      // It is at the card's right edge, not under the name, so the metadata
+      // indent the pattern applies has nothing to align to here.
+      padding-left: 0;
+    }
+  }
+}
+
+// ── Phones ───────────────────────────────────────────────────────────────────
+// Two values at opposite edges of a 320px card are further from each other than
+// they are from the labels they belong to, and the 48px indent is a sixth of
+// the width. Both give way and the pattern's default stacking returns.
+//
+// After the block above, deliberately: a media query adds no specificity, so
+// the later rule is the one that wins inside the narrower range. See main.scss.
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-admin-departments .mhd-datatable-surface {
+    .mhd-dept-members,
+    .mhd-dept-sla {
+      grid-column: 1 / -1;
+      justify-self: start;
+      padding-left: 0;
+    }
+
+    .mhd-dept-members { grid-row: 2; }
+    .mhd-dept-sla     { grid-row: 3; }
+  }
+}

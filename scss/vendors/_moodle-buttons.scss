@@ -1,0 +1,97 @@
+// =============================================================================
+// vendors/_moodle-buttons.scss
+// The bridge: Moodle's own buttons, wearing mooDesk's button.
+//
+// WHY THIS EXISTS. Nine screens render a moodleform — department, team,
+// category, custom field, automation, webhook, reply, merge and new ticket.
+// Moodle, not our templates, emits their Save and Cancel buttons, as
+// `<input class="btn btn-primary">` and friends. There is no class we can put
+// on them from Mustache, so without this file every form in the product would
+// end its journey with two Bootstrap buttons that match nothing around them.
+//
+// WHAT IT IS NOT. This is not a second button system. It declares no dimension
+// of its own: it includes the same mixins as components/_button.scss, so a
+// Moodle Save button and an `.mhd-btn` are the same object built twice, and a
+// change to a token moves both. If you find yourself writing a number here,
+// the number belongs in the component.
+//
+// SCOPE. Everything is scoped under `.moodesk-app`, the application shell that
+// wraps every mooDesk screen (see \local_moodesk\output\app_page). Moodle's
+// buttons everywhere else in the site are untouched.
+//
+// LIFETIME. The variant mappings below also caught the `.btn` markup left in our
+// own templates while the migration ran. That is over — no template of ours
+// writes `.btn` any more, and button_markup_test now asserts it. The mappings
+// stay anyway: Moodle emits `.btn` inside the shell from places we do not write
+// and cannot enumerate — moodleform, the file picker, core dialogs, pagination —
+// and a mapping that catches one of those costs a line and saves a screen.
+// =============================================================================
+
+@use '../components/button' as btn;
+
+.moodesk-app {
+  .btn {
+    @include btn.mhd-button-base;
+  }
+
+  // ── Sizes ──────────────────────────────────────────────────────────────────
+  // Bootstrap's two size modifiers map onto the Expressive scale. `btn-sm` is
+  // what the dense screens already use, and xsmall is what M3 prescribes for
+  // exactly those: table row actions and compact toolbars.
+
+  .btn-sm { @include btn.mhd-button-size('xsmall'); }
+
+  .btn-lg { @include btn.mhd-button-size('medium'); }
+
+  // ── Variants ───────────────────────────────────────────────────────────────
+  // Read as: what did the Bootstrap class mean, and which M3 variant means the
+  // same thing. Emphasis is preserved, not translated literally.
+
+  .btn-primary { @include btn.mhd-button-filled; }
+  .btn-link    { @include btn.mhd-button-text; }
+  .btn-danger  { @include btn.mhd-button-danger; }
+
+  // `btn-secondary` maps to outlined, not to M3's filled-tonal, because of what
+  // it actually means here: every use of it in the product is Cancel, or a
+  // filter's submit sitting beside a primary. Tonal would put a second filled
+  // container next to Save and make the pair read as two primary actions —
+  // which is why the drawer used to hand-paint Cancel transparent. Filled-tonal
+  // stays available on .mhd-btn--tonal for a genuine secondary emphasis.
+  .btn-secondary { @include btn.mhd-button-outlined; }
+
+  .btn-outline-primary,
+  .btn-outline-secondary,
+  .btn-outline-info {
+    @include btn.mhd-button-outlined;
+  }
+
+  .btn-outline-danger { @include btn.mhd-button-outlined-danger; }
+
+  // The one call that is not a straight mapping. `btn-warning` was the upgrade
+  // prompt's call to action until that template moved to the component; it is
+  // kept for Moodle's own warning buttons, on the same reasoning that decided
+  // the prompt: M3 has no warning button, and amber cannot carry white text, so
+  // the emphasis survives and the colour does not.
+  .btn-warning { @include btn.mhd-button-filled; }
+
+  // ── Replaced elements ──────────────────────────────────────────────────────
+  // moodleform submits are `<input type="submit">`, and ::after does not apply
+  // to a replaced element — so those buttons would get every M3 property except
+  // the one that makes them feel pressed. The state layer is painted as an
+  // inset shadow instead: same colour (the label's), same opacities.
+
+  input.btn {
+    &:hover {
+      box-shadow: inset 0 0 0 999px color-mix(in srgb, currentcolor 8%, transparent);
+    }
+
+    &:active,
+    &:focus-visible {
+      box-shadow: inset 0 0 0 999px color-mix(in srgb, currentcolor 12%, transparent);
+    }
+
+    &:disabled {
+      box-shadow: none;
+    }
+  }
+}

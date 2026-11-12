@@ -1,0 +1,112 @@
+// =============================================================================
+// layout/_app-shell.scss
+//
+// Outer frame of the standalone application shell: sidebar + main column.
+// Scoped under `.moodesk-app`; consumes the F1 design tokens via var(). Inert
+// until the shell renders that wrapper (ui_mode = app).
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+
+.moodesk-app {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  // Dynamic viewport first, static as the fallback underneath it. On a phone
+  // the address bar makes 100vh taller than what is actually on screen, so the
+  // shell would run under the browser chrome; 100dvh tracks the visible height
+  // as the bar shows and hides. Browsers that do not know the unit keep 100vh.
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  &__main {
+    flex: 1 1 auto;
+    min-width: 0; // allow content to shrink instead of overflowing
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__content {
+    flex: 1 1 auto;
+    padding: var(--mhd-space-lg);
+
+    // Phones give the content every pixel they can spare.
+    @include bp.mhd-respond-to('mobile') {
+      padding: 8px;
+    }
+  }
+
+  // Shared icon sizing for nav, toggle and footer.
+  &__icon {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+  }
+
+  // The inline SVG sprite carries no visual weight.
+  &__icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  // Visible keyboard focus everywhere in the shell (a11y, F7).
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--mhd-color-focus);
+    outline-offset: 2px;
+    border-radius: var(--mhd-radius-sm);
+  }
+
+  // The content region is focus target for the skip link; never show a ring
+  // when it receives programmatic focus.
+  &__content:focus {
+    outline: none;
+  }
+}
+
+// ── Skip link (a11y, F7) ──────────────────────────────────────────────────────
+.moodesk-app__skip-link {
+  position: absolute;
+  left: var(--mhd-space-sm);
+  top: -48px;
+  z-index: 100;
+  padding: var(--mhd-space-sm) var(--mhd-space-md);
+  background: var(--mhd-color-primary);
+  color: var(--mhd-color-text-inverse);
+  border-radius: var(--mhd-radius-md);
+  font-weight: var(--mhd-font-weight-semibold);
+  text-decoration: none;
+  transition: top var(--mhd-transition-fast);
+
+  &:focus {
+    top: var(--mhd-space-sm);
+    text-decoration: none;
+  }
+}
+
+// ── Mobile drawer backdrop (F7) ───────────────────────────────────────────────
+.moodesk-app__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.moodesk-app--drawer-open .moodesk-app__backdrop {
+  display: block;
+}
+
+// The backdrop belongs to the off-canvas drawer; never let it linger once the
+// sidebar is a fixed rail. 'tablet-up' is the exact complement of the 'tablet'
+// query the sidebar opens the drawer in, so the two can never both be true.
+@include bp.mhd-respond-to('tablet-up') {
+  .moodesk-app__backdrop {
+    display: none !important;
+  }
+}

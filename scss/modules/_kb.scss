@@ -1,0 +1,177 @@
+// =============================================================================
+// modules/_kb.scss
+// Knowledge base — the authoring screens (KB-02): the articles list and the
+// article page. The edit form is form_page's and needs nothing here; the
+// editor is Moodle's and gets nothing here on purpose (UI plan §3).
+//
+// ── The list ─────────────────────────────────────────────────────────────────
+// Two controls per row, so the row becomes a card below 992px: the product-wide
+// rule, and everything about how that card looks is the pattern's. What is this
+// screen's own: an article has no face, so the row is titled by
+// `.mhd-cell--name` — plain text, the buttons navigate, as in every other list
+// — and the "updated" cell carries a second, quieter fact (who) beside the
+// first (when).
+//
+// ── The article ──────────────────────────────────────────────────────────────
+// One reading surface at the width a form gets (880px, same as
+// `.moodesk-form-page`) so writing and reading an article happen in the same
+// column. Inside it a meta line of labelled facts, then the body in
+// `.mhd-prose` — the component that owns how rendered rich text reads; this
+// module only places it.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+@use '../components/datatable'  as dt;
+
+// ── The list ─────────────────────────────────────────────────────────────────
+
+// "When" and "by whom" on one line in the table, the second one quieter.
+.mhd-kb-articles__editor {
+  margin-left: v.$mhd-space-xs;
+  font-size: v.$mhd-font-size-sm;
+}
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-kb-articles .mhd-datatable-surface {
+    @include dt.mhd-datatable-as-cards;
+
+    // The card's title row: the title, then the audience pill beside it if
+    // there is one, then room before the facts.
+    .mhd-cell--name {
+      display: block;
+      margin-bottom: v.$mhd-space-xs;
+      font-size: v.$mhd-font-size-md;
+    }
+  }
+}
+
+// ── The article ──────────────────────────────────────────────────────────────
+
+.mhd-kb-article__surface {
+  max-width: 880px;
+  padding: v.$mhd-space-lg;
+  background: c.$mhd-color-surface;
+  border: 1px solid c.$mhd-color-border;
+  border-radius: v.$mhd-radius-lg;
+}
+
+// Labelled facts on one wrapping line: "Category Access · Audience Everyone ·
+// Updated 12 Sep, by Alba". A <dl> for the semantics; flex for the line.
+.mhd-kb-article__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$mhd-space-xs v.$mhd-space-lg;
+  margin: 0 0 v.$mhd-space-lg;
+  padding-bottom: v.$mhd-space-md;
+  border-bottom: 1px solid c.$mhd-color-border;
+  font-size: v.$mhd-font-size-sm;
+}
+
+.mhd-kb-article__fact {
+  display: flex;
+  align-items: baseline;
+  gap: v.$mhd-space-xs;
+
+  dt {
+    margin: 0;
+    font-weight: v.$mhd-font-weight-medium;
+    color: c.$mhd-color-text-muted;
+  }
+
+  dd {
+    margin: 0;
+    color: c.$mhd-color-text;
+  }
+}
+
+.mhd-kb-article__by {
+  color: c.$mhd-color-text-muted;
+}
+
+// The category in the meta line is a way back to its shelf.
+.mhd-kb-article .mhd-kb-article__category {
+  color: c.$mhd-color-text;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    color: c.$mhd-color-primary;
+    text-decoration: underline;
+  }
+}
+
+// Prose stops being comfortable past about 72 characters a line; the surface
+// is wider than that so the meta line and the footer can breathe.
+.mhd-kb-article__surface .mhd-prose {
+  max-width: 72ch;
+}
+
+// The way out when the answer was not here: after the text, before the
+// manager's footer, quiet.
+.mhd-kb-article__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-sm v.$mhd-space-lg;
+  margin-top: v.$mhd-space-lg;
+  padding-top: v.$mhd-space-md;
+  border-top: 1px solid c.$mhd-color-border;
+}
+
+.mhd-kb-article__cta-text {
+  margin: 0;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-kb-article__empty {
+  margin: 0;
+  font-style: italic;
+}
+
+// The administrative transitions, after the text: a quiet label and the
+// product's action group, separated from the body by the same rule the meta
+// line uses above it. Outlined buttons — see the template for why they are
+// here and not in the header.
+.mhd-kb-article__lifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-sm v.$mhd-space-md;
+  margin-top: v.$mhd-space-lg;
+  padding-top: v.$mhd-space-md;
+  border-top: 1px solid c.$mhd-color-border;
+
+  .mhd-action-group {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+.mhd-kb-article__lifecycle-label {
+  font-size: v.$mhd-font-size-sm;
+  font-weight: v.$mhd-font-weight-medium;
+  color: c.$mhd-color-text-muted;
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-kb-article__surface {
+    padding: v.$mhd-space-md;
+  }
+
+  // One fact per line on a phone; the label keeps its place on the left.
+  .mhd-kb-article__meta {
+    flex-direction: column;
+    gap: v.$mhd-space-xs;
+  }
+
+  .mhd-kb-article__cta {
+    flex-direction: column;
+    align-items: stretch;
+
+    > a {
+      width: 100%;
+    }
+  }
+}

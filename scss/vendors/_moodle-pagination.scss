@@ -1,0 +1,30 @@
+// =============================================================================
+// vendors/_moodle-pagination.scss
+//
+// The one thing this file adds to Moodle's pagination.
+//
+// The paging bar is core's: `paging_bar` renders lib/templates/paging_bar.mustache
+// and Bootstrap styles it. It is not ours to rewrite, and it is deliberately not
+// a Pill — a chip is a filter or a label, and these are navigation. Everything
+// about how it looks — the fill on the current page, the hover, the focus ring,
+// the disabled ellipsis — stays Bootstrap's, and the shell's link reset now
+// carries too little weight to interfere (see base/_app-reset.scss).
+//
+// What is added is one property, for one reason: the current page should not be
+// identified by colour alone. Bootstrap already inverts it — white on blue at
+// 5.36:1 — but that is a colour difference, and someone who cannot separate the
+// two hues, or who is looking at a washed-out screen in daylight, is left with
+// nothing else to go on. A heavier label is a second, non-chromatic signal.
+//
+// The hook is `aria-current="page"`, which core already emits on the active
+// link, rather than `.active` on its parent. Same element, and it ties the
+// visual weight to the semantics instead of restating them in parallel: if the
+// attribute ever stops being rendered the styling goes with it, which is the
+// correct failure.
+// =============================================================================
+
+.moodesk-app {
+  .page-link[aria-current='page'] {
+    font-weight: var(--mhd-font-weight-semibold);
+  }
+}

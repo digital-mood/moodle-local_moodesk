@@ -1,0 +1,224 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/admin_health
+
+    System Health — operational incidents the plugin absorbed, per source and in detail.
+
+    Answers five questions and no more: is mooDesk healthy now, what broke, when did it
+    first and last happen, is it still happening, and has anyone picked it up.
+
+    Incidents render as cards rather than table rows: each carries a severity, a code, a
+    free-text message of unpredictable length, four metadata values and two actions, which
+    reads badly in seven columns at any width. There are few of them by construction — the
+    table holds one row per class of failure, not per occurrence.
+
+    Context variables:
+      * state         - 'healthy' | 'degraded' | 'down'
+      * haspluginsections / pluginsections[] - {html} sections plugins add (hook health_panels)
+      * statevariant  - Pill colour variant for the state (see components/_pill.scss)
+      * statelabel    - Human-readable overall state
+      * windowhours   - Active window in hours, for the explanatory line
+      * sources[]     - {key, label, count, healthy, status} — always every source
+      * incidents[]   - {id, code, message, severity, severitylabel, sourcelabel, occurrences,
+                        firstseen, lastseen, lastseenago, acknowledged, ackedlabel}
+      * hasincidents  - True when at least one incident is live
+      * canmanage     - True when the viewer may acknowledge/resolve
+      * entitlement   - {editionlabel, usage, exceeded, statusvariant, statuslabel,
+                        hassourcenote, sourcenote} — live agent count against the enforced capacity;
+                        never an incident and never part of `state`
+      * pageurl       - Where the action forms post back to
+      * sesskey       - Session key for the action forms
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "System health",
+        "description": "Showing failures recorded in the last 24 hours.",
+        "meta": "<span class=\"mhd-pill mhd-pill--success\">Healthy</span>",
+        "actions": [],
+        "primaryaction": null,
+        "hasactions": true
+      },
+      "state": "degraded",
+      "statevariant": "soft-warning",
+      "statelabel": "Something needs attention",
+      "windowhours": 24,
+      "hasincidents": true,
+      "canmanage": true,
+      "pageurl": "/local/moodesk/health.php",
+      "sesskey": "abc123",
+      "entitlement": {
+        "editionlabel": "Starter",
+        "usage": "12 / 10 agents",
+        "exceeded": true,
+        "exceedednote": "No agent has been removed.",
+        "statusvariant": "soft-warning",
+        "statuslabel": "Agent limit exceeded",
+        "hassourcenote": false,
+        "sourcenote": ""
+      },
+      "sources": [
+        {"key": "observer", "label": "Notifications and automation", "count": 1,
+         "healthy": false, "status": "1 issue"},
+        {"key": "webhook", "label": "Webhooks", "count": 0, "healthy": true, "status": "OK"},
+        {"key": "email_ingestion", "label": "Email ingestion", "count": 0, "healthy": true,
+         "status": "OK"},
+        {"key": "scheduled_task", "label": "Scheduled tasks", "count": 0, "healthy": true,
+         "status": "OK"}
+      ],
+      "incidents": [
+        {
+          "id": 7,
+          "code": "observer.ticket_created.notify_failed",
+          "message": "Could not notify agents",
+          "severity": "error",
+          "severitylabel": "Error",
+          "sourcelabel": "Notifications and automation",
+          "occurrences": 12,
+          "firstseen": "Tuesday, 19 August 2026, 9:14 AM",
+          "lastseen": "Tuesday, 19 August 2026, 11:02 AM",
+          "lastseenago": "3 mins 20 secs",
+          "acknowledged": false,
+          "ackedlabel": ""
+        }
+      ]
+    }
+}}
+<div class="mhd-health">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! Always every source: "email ingestion is fine" is an answer too. }}
+  <ul class="mhd-health-sources">
+    {{#sources}}
+    <li class="mhd-health-source {{#healthy}}mhd-health-source--ok{{/healthy}}{{^healthy}}mhd-health-source--issues{{/healthy}}">
+      <span class="mhd-health-source-label">{{label}}</span>
+      <span class="mhd-health-source-status">{{status}}</span>
+    </li>
+    {{/sources}}
+  </ul>
+
+  {{#hasincidents}}
+  <ul class="mhd-health-incidents">
+    {{#incidents}}
+    <li class="mhd-health-incident mhd-health-incident--{{severity}}{{#acknowledged}} mhd-health-incident--acknowledged{{/acknowledged}}">
+
+      <div class="mhd-health-incident-head">
+        <span class="mhd-health-severity mhd-health-severity--{{severity}}">{{severitylabel}}</span>
+        <span class="mhd-health-incident-source">{{sourcelabel}}</span>
+        {{#acknowledged}}
+        <span class="mhd-health-ack-flag">{{ackedlabel}}</span>
+        {{/acknowledged}}
+      </div>
+
+      <p class="mhd-health-incident-message">{{message}}</p>
+      <code class="mhd-health-incident-code">{{code}}</code>
+
+      <dl class="mhd-health-incident-meta">
+        <div>
+          <dt>{{#str}} health_occurrences, local_moodesk {{/str}}</dt>
+          <dd>{{occurrences}}</dd>
+        </div>
+        <div>
+          <dt>{{#str}} health_first_seen, local_moodesk {{/str}}</dt>
+          <dd>{{firstseen}}</dd>
+        </div>
+        <div>
+          <dt>{{#str}} health_last_seen, local_moodesk {{/str}}</dt>
+          <dd>{{lastseen}} <span class="text-muted">({{#str}} health_ago, local_moodesk, {{lastseenago}} {{/str}})</span></dd>
+        </div>
+      </dl>
+
+      {{#canmanage}}
+      <div class="mhd-health-incident-actions">
+        {{^acknowledged}}
+        <form method="post" action="{{pageurl}}" class="d-inline">
+          <input type="hidden" name="action"     value="acknowledge">
+          <input type="hidden" name="incidentid" value="{{id}}">
+          <input type="hidden" name="sesskey"    value="{{sesskey}}">
+          {{! Two actions on the same incident, neither of them destructive and
+              neither outranking the other, so both are outlined at the xsmall
+              the incident list's density calls for. }}
+          <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">
+            {{#str}} health_acknowledge, local_moodesk {{/str}}
+          </button>
+        </form>
+        {{/acknowledged}}
+        <form method="post" action="{{pageurl}}" class="d-inline">
+          <input type="hidden" name="action"     value="resolve">
+          <input type="hidden" name="incidentid" value="{{id}}">
+          <input type="hidden" name="sesskey"    value="{{sesskey}}">
+          <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">
+            {{#str}} health_resolve, local_moodesk {{/str}}
+          </button>
+        </form>
+      </div>
+      {{/canmanage}}
+
+    </li>
+    {{/incidents}}
+  </ul>
+  {{/hasincidents}}
+
+  {{^hasincidents}}
+  {{! The healthy case is the normal one, so it gets a real empty state rather
+      than a blank page that reads like something failed to load. }}
+  <div class="mhd-empty-state">
+    <p class="mhd-empty-state-title">{{#str}} health_empty_title, local_moodesk {{/str}}</p>
+    <p class="text-muted">{{#str}} health_empty_body, local_moodesk, {{windowhours}} {{/str}}</p>
+  </div>
+  {{/hasincidents}}
+
+  {{! ── Entitlement (D15) ──
+      Licensing state beside operational health, not inside it. The pill here
+      is the section's own: an over-limit site is commercially over-limit and
+      technically healthy, and the banner above says nothing about it. }}
+  {{#entitlement}}
+  <section class="mhd-health-senderauth mhd-health-entitlement">
+    <h3 class="mhd-health-senderauth-title">{{#str}} health_entitlement_heading, local_moodesk {{/str}}</h3>
+
+    <dl class="mhd-health-senderauth-meta">
+      <div>
+        <dt>{{#str}} health_entitlement_edition, local_moodesk {{/str}}</dt>
+        <dd>{{editionlabel}}</dd>
+      </div>
+      <div>
+        <dt>{{#str}} health_entitlement_agents, local_moodesk {{/str}}</dt>
+        <dd>{{usage}}</dd>
+      </div>
+      <div>
+        <dt>{{#str}} health_entitlement_status, local_moodesk {{/str}}</dt>
+        <dd><span class="mhd-pill mhd-pill--{{statusvariant}}">{{statuslabel}}</span></dd>
+      </div>
+    </dl>
+
+    {{#exceeded}}
+    <p class="mhd-health-senderauth-verdict mhd-health-senderauth-verdict--pending">{{exceedednote}}</p>
+    {{/exceeded}}
+    {{#hassourcenote}}
+    <p class="mhd-health-senderauth-verdict mhd-health-senderauth-verdict--pending">{{sourcenote}}</p>
+    {{/hassourcenote}}
+  </section>
+  {{/entitlement}}
+
+  {{! Sections plugins add (hook health_panels). }}
+  {{#haspluginsections}}
+  {{#pluginsections}}{{{html}}}{{/pluginsections}}
+  {{/haspluginsections}}
+
+</div>

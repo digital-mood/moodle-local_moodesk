@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/moodesk/tests/fixtures" VERSION="20261105"
+    COMMENT="The Pro tables as release 2.39.1 declares them. A site upgrading to 3.0.0 still has them and db/upgrade.php still runs on them; a fresh install does not. Upgrade tests install this file to stand where such a site stands."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+
+  <TABLES>
+
+    <TABLE NAME="local_moodesk_rule" COMMENT="Automation rules: a trigger, optional conditions, one or more actions. Conditions and actions are JSON arrays rather than child tables, so the schema stays flat and upgrade-safe as new types are added. Phase 8+.">
+      <FIELDS>
+        <FIELD NAME="id"             TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="name"           TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="description"    TYPE="text"              NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="isactive"       TYPE="int"  LENGTH="1"   NOTNULL="true"  DEFAULT="1" SEQUENCE="false"
+                                     COMMENT="1=active (rule fires on trigger), 0=disabled."/>
+        <FIELD NAME="trigger_type"   TYPE="char" LENGTH="50"  NOTNULL="true" SEQUENCE="false"
+                                     COMMENT="ticket_created | status_changed | time_elapsed | sla_breached"/>
+        <FIELD NAME="trigger_config" TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                     COMMENT="JSON params for the trigger, e.g. {&quot;hours&quot;:24} for time_elapsed."/>
+        <FIELD NAME="conditions"     TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                     COMMENT="JSON array of condition objects: [{type,operator,value}]. Empty = always matches."/>
+        <FIELD NAME="actions"        TYPE="text"              NOTNULL="true" SEQUENCE="false"
+                                     COMMENT="JSON array of action objects: [{type,value}]. At least one action required."/>
+        <FIELD NAME="sort_order"     TYPE="int"  LENGTH="4"   NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                     COMMENT="Execution order when multiple rules share the same trigger."/>
+        <FIELD NAME="timecreated"    TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"   TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified"   TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_trigger_isactive" UNIQUE="false" FIELDS="trigger_type, isactive"
+                                          COMMENT="Supports get_active_rules_by_trigger() lookup."/>
+        <INDEX NAME="ix_sort_order"       UNIQUE="false" FIELDS="sort_order"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_rule_log" COMMENT="Automation rule execution log, one row per rule-and-ticket execution attempt. Insert-only. Phase 8+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="ruleid"       TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="ticketid"     TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="triggered_at" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Unix timestamp when the rule was evaluated."/>
+        <FIELD NAME="success"      TYPE="int"  LENGTH="1"   NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="1=all actions executed, 0=partial failure (see note)."/>
+        <FIELD NAME="note"         TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Human-readable result summary or error message."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"     TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_ruleid"   TYPE="foreign" FIELDS="ruleid"
+             REFTABLE="local_moodesk_rule"   REFFIELDS="id"/>
+        <KEY NAME="fk_ticketid" TYPE="foreign" FIELDS="ticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_ruleid_ticketid"   UNIQUE="false" FIELDS="ruleid, ticketid"/>
+        <INDEX NAME="ix_triggered_at"      UNIQUE="false" FIELDS="triggered_at"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_email_message" COMMENT="One row per email the ingestion pipeline processed. Three jobs: idempotency (unique message_id), threading (in_reply_to and references_header resolve a reply to its ticket without a subject-line token), and an audit trail of email-originated activity. Rows with no ticketid are audit-only, e.g. unknown-sender rejections. Phase 9+.">
+      <FIELDS>
+        <FIELD NAME="id"               TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="ticketid"         TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Ticket this email belongs to (created or replied to). Null for audit-only rows not tied to a ticket, e.g. unknown-sender rejections (role=3)."/>
+        <FIELD NAME="replyid"          TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Reply row created by this email. Null when this email created the ticket (role=0)."/>
+        <FIELD NAME="message_id"       TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="MIME Message-ID header value. Unique. Primary threading key."/>
+        <FIELD NAME="in_reply_to"      TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="MIME In-Reply-To header value. References the direct parent message."/>
+        <FIELD NAME="references_header" TYPE="text"             NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Full MIME References header. Space-separated list of ancestor Message-IDs."/>
+        <FIELD NAME="sender_email"     TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Sender address, lowercased and trimmed. Used for deduplication and user matching."/>
+        <FIELD NAME="sender_name"      TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Display name portion of the From header, if present."/>
+        <FIELD NAME="raw_subject"      TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Original unmodified Subject header value."/>
+        <FIELD NAME="role"             TYPE="int"  LENGTH="1"   NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                       COMMENT="0=ticket_origin, 1=reply, 2=duplicate_skipped, 3=unknown_sender_rejected, 4=merged_rejected, 5=unauthorised_rejected, 6=unprocessable, 7=token_rejected, 8=token_sender_mismatch, 9=sender_unverified_rejected. See local_moodesk\\domain\\email_message."/>
+        <FIELD NAME="reject_reason"    TYPE="char" LENGTH="64"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Reason an email was rejected (e.g. unknown_sender_rejected). Null for accepted emails."/>
+
+        <FIELD NAME="auth_source"      TYPE="char" LENGTH="16"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="SEC-04A. What authorised this message to be written into an existing ticket: token | from | none. Null on rows the question does not apply to."/>
+        <FIELD NAME="token_status"     TYPE="char" LENGTH="24"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="SEC-04A. Outcome of verifying the conversation reply token: valid | absent | foreign_tag | malformed | bad_signature | unknown_key | unknown_version | expired | stale_epoch | sender_mismatch."/>
+        <FIELD NAME="token_userid"     TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="SEC-04A. The user the reply token was issued to. Deliberately distinct from resolved_userid: they are two different facts and must never be collapsed, even when they agree."/>
+        <FIELD NAME="resolved_userid"  TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="SEC-04A. The active Moodle user the declared From address resolved to, if any. The declared address itself is in sender_email."/>
+        <FIELD NAME="sender_auth"      TYPE="char" LENGTH="16"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="SEC-04B. The authentication verdict derived from the receiving MTA stamp: pass | fail | none | absent | unverifiable | unsupported. NULL means the question was not asked (verification off, or the row predates SEC-04B) and is deliberately distinct from unverifiable, which means it was asked and this site cannot answer it."/>
+        <FIELD NAME="timecreated"      TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Unix timestamp when this email was processed by the task."/>
+        <FIELD NAME="ttl_purgedat"     TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="DATA-01. Unix timestamp when a retention sweep blanked this row's identifying columns. Null means never swept. Only refusal roles are ever swept; see local_moodesk\\domain\\email_message::PURGABLE_AUDIT_ROLES."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"      TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_ticketid"  TYPE="foreign" FIELDS="ticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="uq_message_id"      UNIQUE="true"  FIELDS="message_id"
+                                         COMMENT="Idempotency: prevents double-processing the same email."/>
+        <INDEX NAME="ix_sender_timecreated" UNIQUE="false" FIELDS="sender_email, timecreated"
+                                         COMMENT="Supports deduplication window query by sender."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_webhook" COMMENT="Outbound webhook subscriptions, one row per endpoint. The secret signs the HMAC-SHA256 in the X-Signature-256 header so receivers can verify authenticity. Phase 10+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="name"         TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Human-readable label, e.g. client name or integration name."/>
+        <FIELD NAME="url"          TYPE="char" LENGTH="1000" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Target URL for the HTTP POST delivery."/>
+        <FIELD NAME="secret"       TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="HMAC-SHA256 signing secret. Null = no signature sent."/>
+        <FIELD NAME="events"       TYPE="text" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="JSON array of subscribed event types: ticket.created, ticket.updated, ticket.resolved, ticket.replied."/>
+        <FIELD NAME="isactive"     TYPE="int"  LENGTH="1"   NOTNULL="true"  DEFAULT="1" SEQUENCE="false"
+                                   COMMENT="1=active (dispatch enabled), 0=disabled."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_isactive" UNIQUE="false" FIELDS="isactive"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_webhook_log" COMMENT="Outbound webhook delivery log, one row per dispatch attempt. success=1 means the endpoint answered 2xx. Insert-only. Phase 10+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="webhookid"    TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="event_type"   TYPE="char" LENGTH="50"  NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Event that triggered this delivery, e.g. ticket.created."/>
+        <FIELD NAME="ticketid"     TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="payload"      TYPE="text" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="JSON payload sent to the endpoint."/>
+        <FIELD NAME="http_status"  TYPE="int"  LENGTH="4"   NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="HTTP response code received. Null on connection failure."/>
+        <FIELD NAME="response_body" TYPE="text" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="First 4 KB of the HTTP response body for debugging."/>
+        <FIELD NAME="success"      TYPE="int"  LENGTH="1"   NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="1=HTTP 2xx received, 0=error or non-2xx."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Unix timestamp when the delivery was attempted."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"     TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_webhookid" TYPE="foreign" FIELDS="webhookid"
+             REFTABLE="local_moodesk_webhook" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_webhookid_timecreated" UNIQUE="false" FIELDS="webhookid, timecreated"/>
+        <INDEX NAME="ix_ticketid"              UNIQUE="false" FIELDS="ticketid"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_webhook_queue" COMMENT="Outbound webhook async dispatch queue, one row per delivery to attempt. The dispatch_webhook task drains rows whose next_retry_at has passed and either marks them done, schedules a retry on the backoff ladder (1m, 5m, 30m, 2h; five attempts maximum), or marks them failed. Successful deliveries also write to local_moodesk_webhook_log.">
+      <FIELDS>
+        <FIELD NAME="id"            TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="webhookid"     TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Subscription this delivery targets."/>
+        <FIELD NAME="event_type"    TYPE="char" LENGTH="50"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Event that triggered this delivery, e.g. ticket.created."/>
+        <FIELD NAME="ticketid"      TYPE="int"  LENGTH="10"  NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                    COMMENT="Originating ticket id, or 0 for non-ticket events."/>
+        <FIELD NAME="payload"       TYPE="text" NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="JSON payload to POST to the subscription URL."/>
+        <FIELD NAME="attempts"      TYPE="int"  LENGTH="3"   NOTNULL="true" DEFAULT="0" SEQUENCE="false"
+                                    COMMENT="Number of delivery attempts made so far."/>
+        <FIELD NAME="next_retry_at" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Earliest unix timestamp at which to attempt delivery."/>
+        <FIELD NAME="status"        TYPE="char" LENGTH="20"  NOTNULL="true" DEFAULT="pending" SEQUENCE="false"
+                                    COMMENT="Queue state: pending|done|failed."/>
+        <FIELD NAME="last_error"    TYPE="text" NOTNULL="false" SEQUENCE="false"
+                                    COMMENT="Most recent failure reason, null on success."/>
+        <FIELD NAME="timecreated"   TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"      TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_webhookid" TYPE="foreign" FIELDS="webhookid"
+             REFTABLE="local_moodesk_webhook" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_status_next_retry" UNIQUE="false" FIELDS="status, next_retry_at"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_cfield" COMMENT="Custom field definitions for tickets. Definitions only; visibility decides whether requesters see the field or only agents do. Phase 11.C+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="name"         TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Label shown to users."/>
+        <FIELD NAME="description"  TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Optional help text shown below the field."/>
+        <FIELD NAME="fieldtype"    TYPE="char" LENGTH="20"  NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="text | textarea | select | checkbox | date"/>
+        <FIELD NAME="options"      TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="JSON array of option strings. Only used when fieldtype=select."/>
+        <FIELD NAME="required"     TYPE="int"  LENGTH="1"   NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="1=required on submission form, 0=optional."/>
+        <FIELD NAME="visibility"   TYPE="char" LENGTH="20"  NOTNULL="true"  DEFAULT="all" SEQUENCE="false"
+                                   COMMENT="all = shown to requesters and agents; agents_only = hidden from requesters."/>
+        <FIELD NAME="sortorder"    TYPE="int"  LENGTH="4"   NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="Display order. Lower values appear first."/>
+        <FIELD NAME="isactive"     TYPE="int"  LENGTH="1"   NOTNULL="true"  DEFAULT="1" SEQUENCE="false"
+                                   COMMENT="1=active (shown on forms), 0=archived (hidden but values preserved)."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_isactive_sortorder" UNIQUE="false" FIELDS="isactive, sortorder"
+                                            COMMENT="Supports get_all_active() ordered lookup."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_cfield_value" COMMENT="Per-ticket values for custom fields, one row per ticket-and-field pair. Values are stored as text whatever the field type; a date is a calendar date as Y-m-d. Phase 11.C+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10" NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="ticketid"     TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="fieldid"      TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="value"        TYPE="text"             NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Stored value as string. Date = Y-m-d. Checkbox = 0 or 1."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"     TYPE="primary"  FIELDS="id"/>
+        <KEY NAME="fk_ticketid" TYPE="foreign"  FIELDS="ticketid"
+             REFTABLE="local_moodesk_ticket"       REFFIELDS="id"/>
+        <KEY NAME="fk_fieldid"  TYPE="foreign"  FIELDS="fieldid"
+             REFTABLE="local_moodesk_cfield" REFFIELDS="id"/>
+        <KEY NAME="uq_ticket_field" TYPE="unique" FIELDS="ticketid, fieldid"
+             COMMENT="One value per field per ticket. Enables upsert pattern."/>
+      </KEYS>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_csat_rating" COMMENT="CSAT satisfaction survey, one row per ticket. A NULL rating means the invitation went out and the requester has not answered yet. The token gives the survey page a URL that works from an email link without depending on session state. Phase 11.D+.">
+      <FIELDS>
+        <FIELD NAME="id"            TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="ticketid"      TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Ticket this survey belongs to. One survey per ticket."/>
+        <FIELD NAME="rating"        TYPE="int"  LENGTH="1"   NOTNULL="false" SEQUENCE="false"
+                                    COMMENT="1-5 star rating. NULL = invitation sent but not yet submitted."/>
+        <FIELD NAME="comment"       TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                    COMMENT="Optional free-text feedback from the requester."/>
+        <FIELD NAME="token"         TYPE="char" LENGTH="64"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Secure random hex token for the survey URL (64 chars)."/>
+        <FIELD NAME="token_expires" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                    COMMENT="Unix timestamp after which the token is invalid."/>
+        <FIELD NAME="submitted_at"  TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                    COMMENT="Unix timestamp when the requester submitted the rating. NULL = not yet submitted."/>
+        <FIELD NAME="timecreated"   TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"     TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_ticketid" TYPE="foreign" FIELDS="ticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+        <KEY NAME="uq_ticketid" TYPE="unique"  FIELDS="ticketid"
+             COMMENT="One CSAT record per ticket."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="uq_token"        UNIQUE="true"  FIELDS="token"
+                                      COMMENT="Fast lookup by survey token on the public csat.php page."/>
+        <INDEX NAME="ix_submitted_at" UNIQUE="false" FIELDS="submitted_at"
+                                      COMMENT="Supports filtering submitted vs pending surveys in reports."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_team" COMMENT="Agent teams for collaborative ticket handling, cross-departmental by design: departments route tickets, teams group agents. A ticket assigned to a team is visible to every member. Phase 11.E+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="name"         TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Human-readable team name, e.g. Tier 1 Support."/>
+        <FIELD NAME="description"  TYPE="text"              NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="isactive"     TYPE="int"  LENGTH="1"   NOTNULL="true"  DEFAULT="1" SEQUENCE="false"
+                                   COMMENT="1=active (visible in assignment dropdowns), 0=archived."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_isactive" UNIQUE="false" FIELDS="isactive"
+                                  COMMENT="Supports get_all_active() filtered lookup."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_team_member" COMMENT="Agent membership in a team, one row per pair. Only users holding local/moodesk:agent should be added, which the service layer enforces. Phase 11.E+.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="teamid"       TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid"       TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Moodle user ID of the agent member."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"    TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_teamid"  TYPE="foreign" FIELDS="teamid"
+             REFTABLE="local_moodesk_team" REFFIELDS="id"/>
+        <KEY NAME="uq_team_user" TYPE="unique" FIELDS="teamid, userid"
+             COMMENT="One membership record per agent per team."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_userid" UNIQUE="false" FIELDS="userid"
+                                COMMENT="Supports get_user_teams() lookup."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_api_token" COMMENT="mooDesk REST API token metadata (companion to {external_tokens}). Phase 10 (Enterprise).">
+      <FIELDS>
+        <FIELD NAME="id"              TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="userid"          TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                      COMMENT="Owner of the token. The token inherits this user's capabilities."/>
+        <FIELD NAME="externaltokenid" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"
+                                      COMMENT="The {external_tokens}.id row this metadata augments."/>
+        <FIELD NAME="name"            TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"
+                                      COMMENT="Human-friendly label, e.g. integration or client name."/>
+        <FIELD NAME="scopes"          TYPE="text" NOTNULL="false" SEQUENCE="false"
+                                      COMMENT="JSON array of granted scope strings. Stored now, enforced in a later phase."/>
+        <FIELD NAME="timecreated"     TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified"    TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"            TYPE="primary" FIELDS="id"/>
+        <KEY NAME="uq_externaltokenid" TYPE="unique"  FIELDS="externaltokenid"
+             COMMENT="One metadata row per native web service token."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_userid" UNIQUE="false" FIELDS="userid"
+                                COMMENT="Supports per-user token listing."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_merge_audit" COMMENT="One row per merge attempt; immutable except for the revert columns. Phase 12 (Enterprise ticket merge).">
+      <FIELDS>
+        <FIELD NAME="id"               TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="sourceticketid"   TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Ticket that was merged INTO the target."/>
+        <FIELD NAME="targetticketid"   TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Canonical ticket that received the source."/>
+        <FIELD NAME="actorid"          TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="userid of the agent who executed the merge."/>
+        <FIELD NAME="mergedat"         TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="Unix timestamp when the merge committed."/>
+        <FIELD NAME="reason"           TYPE="text"             NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Optional free-text rationale captured at merge time."/>
+        <FIELD NAME="source_snapshot"  TYPE="text"             NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="JSON snapshot of the source ticket state at merge time (status, priority, departmentid, categoryid, assigneeid, sla_state, custom_fields). Read by revert to restore the source."/>
+        <FIELD NAME="migrated_items"   TYPE="text"             NOTNULL="true" SEQUENCE="false"
+                                       COMMENT="JSON summary of what was linked: replies, internal notes, attachments, history entries. Counts only, never content."/>
+        <FIELD NAME="conflicts"        TYPE="text"             NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="JSON list of conflicts encountered, e.g. SLA delta, cross-requester, custom field mismatches."/>
+        <FIELD NAME="revertedat"       TYPE="int"  LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Unix timestamp of the revert. NULL while the merge stands."/>
+        <FIELD NAME="reverted_actorid" TYPE="int"  LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="userid of the agent who reverted. NULL while the merge stands."/>
+        <FIELD NAME="ttl_archivedat"   TYPE="int"  LENGTH="10" NOTNULL="false" SEQUENCE="false"
+                                       COMMENT="Unix timestamp when the revert TTL expired and the row became view-only. Rows are never hard-deleted."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"   TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_source" TYPE="foreign" FIELDS="sourceticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+        <KEY NAME="fk_target" TYPE="foreign" FIELDS="targetticketid"
+             REFTABLE="local_moodesk_ticket" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_mergedat" UNIQUE="false" FIELDS="mergedat"
+                                  COMMENT="Supports TTL sweeps and chronological audit reporting."/>
+        <INDEX NAME="ix_actorid"  UNIQUE="false" FIELDS="actorid"
+                                  COMMENT="Supports 'what did this agent merge' compliance queries. No foreign key: no plugin table declares one against {user}."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_kb_feedback" COMMENT="Was this article helpful? One row per reader per translation row: the reader's current answer, replaced in place when they change their mind. A person's opinion, not the organisation's content — exported under the reader and deleted on erasure. Never purged by retention. KB-07.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="articleid"    TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="The translation row (local_moodesk_kb_article.id) the reader voted on — never the group. Language and group are read from the article at query time, so a re-parented group or a corrected language needs no migration here."/>
+        <FIELD NAME="userid"       TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Who voted. The row is deleted, not anonymised, on a privacy erasure request."/>
+        <FIELD NAME="helpful"      TYPE="int" LENGTH="1"  NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="1 yes, 0 no."/>
+        <FIELD NAME="timecreated"  TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="First vote on this row by this reader."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"
+                                   COMMENT="Last change of mind; equals timecreated until there is one."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"      TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_articleid" TYPE="foreign" FIELDS="articleid" REFTABLE="local_moodesk_kb_article" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ux_article_user"  UNIQUE="true"  FIELDS="articleid, userid" COMMENT="One active vote per reader per translation row; a second vote is an update."/>
+        <INDEX NAME="ix_userid"        UNIQUE="false" FIELDS="userid" COMMENT="Privacy export and erasure by reader."/>
+        <INDEX NAME="ix_timemodified"  UNIQUE="false" FIELDS="timemodified" COMMENT="Range-filtered helpful rate."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_kb_event" COMMENT="Knowledge base analytics: one anonymous, typed fact per row — a translation was opened, a search found N results, a translation was offered while a ticket was written, opened from there, or shared in a reply. No user id (actorrole is the kind of reader, never the reader), no group or language (read from the article), no JSON. Append-only; purged by two retention windows, one for search rows and one for the rest. KB-07.">
+      <FIELDS>
+        <FIELD NAME="id"          TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="type"        TYPE="int"  LENGTH="2"   NOTNULL="true" SEQUENCE="false"
+                                  COMMENT="1 view, 2 search, 3 suggest_impression, 4 suggest_open, 5 reply_link. Constants on the kb_event domain class."/>
+        <FIELD NAME="articleid"   TYPE="int"  LENGTH="10"  NOTNULL="false" SEQUENCE="false"
+                                  COMMENT="The translation row the event is about; NULL for a search, which is about the query."/>
+        <FIELD NAME="surface"     TYPE="int"  LENGTH="2"   NOTNULL="true" SEQUENCE="false"
+                                  COMMENT="Where it happened: 1 reader (article page), 2 kb_search (landing), 3 composer (Suggested Articles), 4 reply_public, 5 reply_note."/>
+        <FIELD NAME="actorrole"   TYPE="int"  LENGTH="1"   NOTNULL="true" SEQUENCE="false"
+                                  COMMENT="What kind of person: 0 requester, 1 agent, 2 editor. Never which person."/>
+        <FIELD NAME="resultcount" TYPE="int"  LENGTH="5"   NOTNULL="false" SEQUENCE="false"
+                                  COMMENT="Search rows only: how many articles the query found."/>
+        <FIELD NAME="querynorm"   TYPE="char" LENGTH="120" NOTNULL="false" SEQUENCE="false"
+                                  COMMENT="Search rows with resultcount = 0 only: the tokens the engine matched on, lower-cased, redacted of e-mail-like, long-digit and over-long tokens, at most 120 characters. Empty when redaction left nothing. Never a raw query."/>
+        <FIELD NAME="timecreated" TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"      TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_articleid" TYPE="foreign" FIELDS="articleid" REFTABLE="local_moodesk_kb_article" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ix_type_time_article" UNIQUE="false" FIELDS="type, timecreated, articleid" COMMENT="Every KPI, the day bars and the per-row aggregates: one type over a range, with the article id in the index so a GROUP BY articleid never touches the rows (on MariaDB that was the difference between 6 ms and 650 ms per million events in the KB-07a lab). Also the per-type purge."/>
+        <INDEX NAME="ix_type_result_time"  UNIQUE="false" FIELDS="type, resultcount, timecreated" COMMENT="Searches with no results (type = search, resultcount = 0, range) without touching the row: on MariaDB the row lookups for resultcount cost a second per million events (KB-07a lab)."/>
+        <INDEX NAME="ix_article_type_time" UNIQUE="false" FIELDS="articleid, type, timecreated" COMMENT="Per-article tables and the delete cascade."/>
+        <INDEX NAME="ix_timecreated"       UNIQUE="false" FIELDS="timecreated" COMMENT="Range-only scans."/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_moodesk_mailbox_cursor" COMMENT="IMAP synchronisation state: one row per polled folder of one mailbox, recording how far the poller has read by UID. The authority on which messages are new (E5); IMAP flags are written for webmail but never read. Holds no personal data: the account is a hash, and no address, subject or Message-ID is stored. Reset, not swept, when the folder's UIDVALIDITY changes.">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="accountkey"   TYPE="char" LENGTH="64"  NOTNULL="true"  SEQUENCE="false"
+                                   COMMENT="sha256 of lower(host):port:lower(user). A different host, port or user is a different mailbox and starts a new cursor."/>
+        <FIELD NAME="folder"       TYPE="char" LENGTH="255" NOTNULL="true"  SEQUENCE="false"
+                                   COMMENT="The folder as configured, e.g. INBOX."/>
+        <FIELD NAME="uidvalidity"  TYPE="int"  LENGTH="10"  NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="The folder's UIDVALIDITY the UIDs below belong to. A different value on SELECT discards them."/>
+        <FIELD NAME="lastuid"      TYPE="int"  LENGTH="10"  NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="Highest UID the poller has moved past. The next poll searches above it."/>
+        <FIELD NAME="retryuids"    TYPE="text"              NOTNULL="false" SEQUENCE="false"
+                                   COMMENT="Comma-separated UIDs at or below lastuid that kept failing with a transient error and are retried first on every poll. Bounded; see imap_fetcher."/>
+        <FIELD NAME="failuid"      TYPE="int"  LENGTH="10"  NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="The UID the cursor is stopped at by a transient error, or 0."/>
+        <FIELD NAME="failcount"    TYPE="int"  LENGTH="4"   NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="Consecutive polls failuid has failed. At the limit it moves to retryuids and the cursor passes it."/>
+        <FIELD NAME="rescanuntil"  TYPE="int"  LENGTH="10"  NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="While a one-time re-scan runs: the folder's UIDNEXT when it started, so UIDs below it were already in the folder. 0 when no re-scan is running."/>
+        <FIELD NAME="rescansince"  TYPE="int"  LENGTH="10"  NOTNULL="true"  DEFAULT="0" SEQUENCE="false"
+                                   COMMENT="While a re-scan runs: messages with an IMAP internal date before this time are not read. 0 when no re-scan is running."/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int"  LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ux_account_folder" UNIQUE="true" FIELDS="accountkey, folder" COMMENT="One cursor per folder of one mailbox."/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

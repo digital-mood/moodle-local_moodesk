@@ -1,0 +1,492 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/ticket_list
+
+    Ticket list — PRO-2 App-style layout with enhanced filter bar, saved views, bulk action
+    toolbar (agents only), and per-row quick actions. Row structure: subject as primary text,
+    meta-pills on second line; filter chips render above the list for each active filter.
+
+    What the query returned — the rows, the list controls bar, the empty state
+    and the pagination — is the local_moodesk/ticket_list_results partial, and
+    its context is documented there. It is a partial rather than markup in this
+    file because a mutation made from the ticket detail drawer refreshes exactly
+    that region, and both paths have to render from one implementation.
+
+    Context variables (this file's own; the partial's are listed in it):
+      * isagent              - True when the viewer is an agent (enables the agent columns)
+      * canbulk              - True when the viewer holds :manage (enables bulk + quick actions)
+      * tabs[]               - Workspace tabs: [{label, url, isactive}]
+      * hastabs              - True when tabs[] is non-empty
+      * currentview          - Active workspace view key
+      * filterformurl        - GET target for the filter form
+      * filterstatuses[]     - Status options: [{value, label, isselected}]
+      * filterpriorities[]   - Priority options: [{value, label, isselected}]
+      * filtercategories[]   - Category options: [{id, name, isselected}]
+      * hasfiltercategories  - True when filtercategories[] is non-empty
+      * filterdepartments[]  - Department options: [{id, name, isselected}]
+      * hasfilterdepartments - True when filterdepartments[] is non-empty
+      * filterassignees[]    - Assignee options: [{id, fullname, isselected}]
+      * hasfilterassignees   - True when filterassignees[] is non-empty
+      * filtersearch         - Current search query string
+      * filtersla            - SLA filter selection (int)
+      * filtersla_breach     - True when SLA breach-only is selected
+      * filtersla_warning    - True when SLA warning-only is selected
+      * filtercreatedfrom    - YYYY-MM-DD created-from filter
+      * filtercreatedto      - YYYY-MM-DD created-to filter
+      * filterupdatedfrom    - YYYY-MM-DD updated-from filter
+      * filterupdatedto      - YYYY-MM-DD updated-to filter
+      * savedviews[]         - Saved views: [{name, url, key}]
+      * hassavedviews        - True when savedviews[] is non-empty
+      * clearallurl          - URL that clears all active filters
+      * activefilterchips[]  - Active filter chips: [{label, dismissurl}]
+      * hasactivefilters     - True when activefilterchips[] is non-empty
+      * currentuserid        - Current user ID (for "Assign to me" quick action)
+      * bulkactionurl        - URL of bulk_action.php
+      * sesskey              - Moodle sesskey for CSRF protection
+      * bulkagents[]         - Bulk-assign agent options: [{id, fullname}]
+      * hasbulkagents        - True when bulkagents[] is non-empty
+      * returnurl            - Current list URL, preserved across a bulk action
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Tickets",
+        "description": null,
+        "meta": null,
+        "actions": [],
+        "primaryaction": {
+          "label": "New ticket",
+          "url": "/local/moodesk/submit.php",
+          "hasurl": true,
+          "icon": "plus",
+          "hasicon": true,
+          "icononly": true,
+          "variant": "filled",
+          "attributes": [
+            {
+              "name": "data-action",
+              "value": "mhd-open-new-ticket"
+            }
+          ],
+          "hasattributes": true
+        },
+        "hasactions": true
+      },
+      "isagent": true,
+      "canbulk": true,
+      "showlistcontrols": true,
+      "total": 1,
+      "empty": false,
+      "submiturl": "/local/moodesk/new.php",
+      "filterformurl": "/local/moodesk/index.php",
+      "filtersearch": "",
+      "tickets": [
+        {
+          "id": 42,
+          "subject": "Cannot access my course",
+          "statuslabel": "Open",
+          "status": "open",
+          "prioritylabel": "High",
+          "priority": "high",
+          "categoryname": "Technical issue",
+          "hasdepartment": true,
+          "departmentname": "Support",
+          "assigneename": "Jane Doe",
+          "isunassigned": false,
+          "timeupdated": "2h ago",
+          "viewurl": "/local/moodesk/view.php?id=42"
+        }
+      ]
+    }
+}}
+<div class="mhd-ticket-list">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! ── Agent workspace tabs ── }}
+  {{#hastabs}}
+  <ul class="nav nav-tabs mhd-workspace-tabs" role="tablist">
+    {{#tabs}}
+    <li class="nav-item" role="presentation">
+      <a class="nav-link{{#isactive}} active{{/isactive}}"
+         href="{{url}}"
+         role="tab">{{label}}</a>
+    </li>
+    {{/tabs}}
+  </ul>
+  {{/hastabs}}
+
+  {{! ── Filter bar ── }}
+  <form class="mhd-filter-bar" method="get" action="{{filterformurl}}">
+
+    {{#hastabs}}
+    <input type="hidden" name="view" value="{{currentview}}">
+    {{/hastabs}}
+
+    {{! Search }}
+    <div class="mhd-filter-search">
+      <svg class="mhd-filter-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <circle cx="5.5" cy="5.5" r="4" stroke="#adb5bd" stroke-width="1.5"/>
+        <path d="M9 9L12 12" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <input type="text"
+             name="search"
+             class="mhd-filter-search-input"
+             value="{{filtersearch}}"
+             placeholder="{{#str}} filter_search_placeholder, local_moodesk {{/str}}">
+    </div>
+
+    {{! Status — checkbox dropdown controlled by filters.js }}
+    <div class="mhd-filter-item mhd-status-dropdown">
+      <button type="button"
+              class="mhd-status-trigger mhd-filter-dropdown-trigger"
+              aria-expanded="false"
+              aria-haspopup="true">
+        <span class="mhd-status-label">{{#str}} filter_all_statuses, local_moodesk {{/str}}</span>
+        <svg class="mhd-dropdown-caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="mhd-status-panel mhd-filter-dropdown-panel" hidden>
+        {{#filterstatuses}}
+        <label class="mhd-status-option">
+          <input type="checkbox"
+                 class="mhd-status-checkbox"
+                 name="status[]"
+                 value="{{value}}"{{#isselected}} checked{{/isselected}}>
+          {{label}}
+        </label>
+        {{/filterstatuses}}
+      </div>
+    </div>
+
+    {{#isagent}}
+
+    {{! Priority }}
+    <div class="mhd-filter-select">
+      <select name="priority"
+              aria-label="{{#str}} ticket_priority, local_moodesk {{/str}}"
+              onchange="this.form.submit()">
+        <option value="-1">{{#str}} filter_all_priorities, local_moodesk {{/str}}</option>
+        {{#filterpriorities}}
+        <option value="{{value}}"{{#isselected}} selected{{/isselected}}>{{label}}</option>
+        {{/filterpriorities}}
+      </select>
+    </div>
+    {{/isagent}}
+
+    {{! ── Secondary filters ────────────────────────────────────────────────
+        Six controls that answer a narrower question than status or priority
+        and cost 264px of a phone screen when they are all on show. Open by
+        default so a viewer without JavaScript keeps every filter reachable;
+        filters.js folds it on phones, where the list matters more than the
+        controls. The count on the summary is what stops a collapsed filter
+        from silently narrowing the list with nothing on screen to say so. }}
+    <details class="mhd-filter-more" data-region="mhd-filter-more" open>
+      <summary class="mhd-filter-more-summary">
+        <span class="mhd-filter-more-text">{{#str}} filter_more, local_moodesk {{/str}}</span>
+        {{#hasmorefiltersactive}}
+        {{! The badge reads as a bare number to anyone who can see it sits on
+            "More filters"; a screen reader gets the sentence instead. }}
+        <span class="mhd-filter-more-count" aria-hidden="true">{{morefilterscount}}</span>
+        <span class="mhd-sr-only">{{#str}} filter_more_active, local_moodesk, {{morefilterscount}} {{/str}}</span>
+        {{/hasmorefiltersactive}}
+        <svg class="mhd-filter-more-caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </summary>
+
+      <div class="mhd-filter-more-body">
+
+    {{#isagent}}
+    {{#hasfilterassignees}}
+    {{! Assignee — auto-submitted by filters.js initAutoSubmitSelects }}
+    <div class="mhd-filter-select">
+      <select name="assigneeid"
+              aria-label="{{#str}} filter_assignee_label, local_moodesk {{/str}}">
+        <option value="-1">{{#str}} filter_all_assignees, local_moodesk {{/str}}</option>
+        {{#filterassignees}}
+        <option value="{{id}}"{{#isselected}} selected{{/isselected}}>{{fullname}}</option>
+        {{/filterassignees}}
+      </select>
+    </div>
+    {{/hasfilterassignees}}
+
+    {{#hasfilterdepartments}}
+    {{! Department }}
+    <div class="mhd-filter-select">
+      <select name="departmentid"
+              aria-label="{{#str}} ticket_department, local_moodesk {{/str}}"
+              onchange="this.form.submit()">
+        <option value="-1">{{#str}} filter_all_departments, local_moodesk {{/str}}</option>
+        {{#filterdepartments}}
+        <option value="{{id}}"{{#isselected}} selected{{/isselected}}>{{name}}</option>
+        {{/filterdepartments}}
+      </select>
+    </div>
+    {{/hasfilterdepartments}}
+
+    {{! SLA status }}
+    <div class="mhd-filter-select">
+      <select name="sla"
+              aria-label="{{#str}} filter_sla_label, local_moodesk {{/str}}"
+              onchange="this.form.submit()">
+        <option value="0">{{#str}} filter_all_sla, local_moodesk {{/str}}</option>
+        <option value="1"{{#filtersla_breach}} selected{{/filtersla_breach}}>{{#str}} filter_sla_breach_only, local_moodesk {{/str}}</option>
+        <option value="2"{{#filtersla_warning}} selected{{/filtersla_warning}}>{{#str}} filter_sla_warning_only, local_moodesk {{/str}}</option>
+      </select>
+    </div>
+
+    {{! Plugin filters (hook ticket_list_filters), auto-submitted by filters.js }}
+    {{#haspluginfilterselects}}
+    {{#pluginfilterselects}}
+    <div class="mhd-filter-select">
+      <select name="{{name}}" aria-label="{{label}}" data-mhd-plugin-filter>
+        {{#options}}
+        <option value="{{value}}"{{#isselected}} selected{{/isselected}}>{{label}}</option>
+        {{/options}}
+      </select>
+    </div>
+    {{/pluginfilterselects}}
+    {{/haspluginfilterselects}}
+
+    {{/isagent}}
+
+    {{#hasfiltercategories}}
+    {{! Category }}
+    <div class="mhd-filter-select">
+      <select name="categoryid"
+              aria-label="{{#str}} ticket_category, local_moodesk {{/str}}"
+              onchange="this.form.submit()">
+        <option value="0">{{#str}} filter_all_categories, local_moodesk {{/str}}</option>
+        {{#filtercategories}}
+        <option value="{{id}}"{{#isselected}} selected{{/isselected}}>{{name}}</option>
+        {{/filtercategories}}
+      </select>
+    </div>
+    {{/hasfiltercategories}}
+
+    {{! Date range — collapsible, controlled by filters.js initDateRangeToggle }}
+    <div class="mhd-filter-item mhd-filter-daterange">
+      <button type="button"
+              class="mhd-filter-dropdown-trigger"
+              data-toggle="mhd-daterange"
+              data-target="#mhd-daterange-block"
+              aria-expanded="false">
+        {{#str}} filter_daterange_trigger, local_moodesk {{/str}}
+        <svg class="mhd-dropdown-caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="mhd-daterange-block" class="mhd-daterange-block mhd-filter-dropdown-panel" hidden>
+        <div class="mhd-daterange-row">
+          <label class="mhd-daterange-label" for="mhd-date-createdfrom">
+            {{#str}} filter_created_from, local_moodesk {{/str}}
+          </label>
+          <input type="date"
+                 id="mhd-date-createdfrom"
+                 name="created_from"
+                 class="mhd-date-input"
+                 value="{{filtercreatedfrom}}">
+          <label class="mhd-daterange-label" for="mhd-date-createdto">
+            {{#str}} filter_created_to, local_moodesk {{/str}}
+          </label>
+          <input type="date"
+                 id="mhd-date-createdto"
+                 name="created_to"
+                 class="mhd-date-input"
+                 value="{{filtercreatedto}}">
+        </div>
+        <div class="mhd-daterange-row">
+          <label class="mhd-daterange-label" for="mhd-date-updatedfrom">
+            {{#str}} filter_updated_from, local_moodesk {{/str}}
+          </label>
+          <input type="date"
+                 id="mhd-date-updatedfrom"
+                 name="updated_from"
+                 class="mhd-date-input"
+                 value="{{filterupdatedfrom}}">
+          <label class="mhd-daterange-label" for="mhd-date-updatedto">
+            {{#str}} filter_updated_to, local_moodesk {{/str}}
+          </label>
+          <input type="date"
+                 id="mhd-date-updatedto"
+                 name="updated_to"
+                 class="mhd-date-input"
+                 value="{{filterupdatedto}}">
+        </div>
+      </div>
+    </div>
+
+      </div>
+    </details>
+
+    <div class="mhd-filter-apply">
+      {{! Filtering is not the primary action on this page — opening a ticket
+          is — so this is outlined, and Clear all stays the quieter link. }}
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">
+        {{#str}} filter_apply, local_moodesk {{/str}}
+      </button>
+    </div>
+
+    {{#hasactivefilters}}
+    <a href="{{clearallurl}}" class="mhd-filter-clear-all">
+      {{#str}} filter_clear_all, local_moodesk {{/str}}
+    </a>
+    {{/hasactivefilters}}
+
+  </form>
+
+  {{! ── Saved views panel (agents only, requires :viewall) ── }}
+  {{#isagent}}
+  <div class="mhd-savedviews-panel">
+
+    <button type="button"
+            id="mhd-save-view-btn"
+            class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-save-view-btn">
+      {{#str}} filter_save_view, local_moodesk {{/str}}
+    </button>
+
+    <div id="mhd-saveview-inline" class="mhd-saveview-inline" hidden>
+      <input type="text"
+             id="mhd-saveview-name"
+             class="form-control form-control-sm mhd-saveview-name-input"
+             placeholder="{{#str}} filter_saveview_placeholder, local_moodesk {{/str}}"
+             maxlength="100">
+      <button type="button"
+              id="mhd-saveview-confirm"
+              class="mhd-btn mhd-btn--filled mhd-btn--xsmall">
+        {{#str}} filter_saveview_confirm, local_moodesk {{/str}}
+      </button>
+      <button type="button"
+              id="mhd-saveview-cancel"
+              class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">
+        {{#str}} filter_saveview_cancel, local_moodesk {{/str}}
+      </button>
+    </div>
+
+    {{#hassavedviews}}
+    <ul class="mhd-savedviews-list" aria-label="{{#str}} filter_saved_views, local_moodesk {{/str}}">
+      {{#savedviews}}
+      <li class="mhd-saved-view-item">
+        {{! Actionable — it navigates to the saved view — so it is an
+            interactive chip. Its delete control is the sibling button, not a
+            nested one: a button inside a link is invalid and unreachable. }}
+        <a href="{{url}}" class="mhd-pill mhd-pill--input mhd-pill--interactive">
+          <span class="mhd-pill__label">{{name}}</span>
+        </a>
+        <button type="button"
+                class="mhd-saved-view-delete"
+                data-action="delete-view"
+                data-key="{{key}}"
+                aria-label="{{#str}} filter_delete_view, local_moodesk {{/str}} {{name}}">
+          &times;
+        </button>
+      </li>
+      {{/savedviews}}
+    </ul>
+    {{/hassavedviews}}
+
+  </div>
+  {{/isagent}}
+
+  {{! ── Active filter chips ── }}
+  {{#hasactivefilters}}
+  <div class="mhd-filter-chips" role="group" aria-label="{{#str}} filter_chips_label, local_moodesk {{/str}}">
+    {{#activefilterchips}}
+    {{! An M3 input chip: a filter the user applied and can take away again.
+        Genuinely interactive, so it is a link and carries the state layer. The
+        cross is decorative — the accessible name is what says what this does. }}
+    <a href="{{dismissurl}}"
+       class="mhd-pill mhd-pill--input mhd-pill--interactive mhd-pill--trailing-icon"
+       aria-label="{{#str}} filter_chip_remove, local_moodesk, {{label}} {{/str}}">
+      <span class="mhd-pill__label">{{label}}</span>
+      <span class="mhd-pill__icon" aria-hidden="true">&times;</span>
+    </a>
+    {{/activefilterchips}}
+  </div>
+  {{/hasactivefilters}}
+
+  {{! ── Bulk action toolbar (needs :manage, hidden until selections made) ──
+      data-returnurl carries the list URL the viewer is standing on, so
+      bulk_action.php can send them back to the same filters, page and view. }}
+  {{#canbulk}}
+  <div class="mhd-bulk-toolbar"
+       id="mhd-bulk-toolbar"
+       data-returnurl="{{returnurl}}"
+       hidden>
+    <span class="mhd-bulk-count" id="mhd-bulk-count"></span>
+    <div class="mhd-bulk-controls">
+
+      <select class="form-select form-select-sm mhd-bulk-action-select"
+              id="mhd-bulk-action-select"
+              aria-label="{{#str}} bulk_choose_action, local_moodesk {{/str}}">
+        <option value="">{{#str}} bulk_choose_action, local_moodesk {{/str}}</option>
+        <option value="status">{{#str}} bulk_action_status, local_moodesk {{/str}}</option>
+        <option value="assign">{{#str}} bulk_action_assign, local_moodesk {{/str}}</option>
+      </select>
+
+      <div class="mhd-bulk-params" id="mhd-bulk-params-status" hidden>
+        <select class="form-select form-select-sm"
+                id="mhd-bulk-newstatus"
+                aria-label="{{#str}} ticket_status, local_moodesk {{/str}}">
+          {{#filterstatuses}}
+          <option value="{{value}}">{{label}}</option>
+          {{/filterstatuses}}
+        </select>
+      </div>
+
+      <div class="mhd-bulk-params" id="mhd-bulk-params-assign" hidden>
+        <select class="form-select form-select-sm"
+                id="mhd-bulk-assigneeid"
+                aria-label="{{#str}} ticket_assignee, local_moodesk {{/str}}">
+          <option value="0">{{#str}} unassigned, local_moodesk {{/str}}</option>
+          {{#bulkagents}}
+          <option value="{{id}}">{{fullname}}</option>
+          {{/bulkagents}}
+        </select>
+      </div>
+
+      {{! The toolbar only exists once rows are selected, so Apply is the
+          primary action while it is on screen. }}
+      <button type="button" class="mhd-btn mhd-btn--filled mhd-btn--xsmall" id="mhd-bulk-apply">
+        {{#str}} bulk_apply, local_moodesk {{/str}}
+      </button>
+      <button type="button" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall" id="mhd-bulk-clear">
+        {{#str}} bulk_clear, local_moodesk {{/str}}
+      </button>
+
+    </div>
+  </div>
+  {{/canbulk}}
+
+  {{! ── Results: everything that depends on what the query returned ──
+      One region, one partial, and one PHP implementation behind it
+      (\local_moodesk\output\ticket_list_results). The list controls, the
+      empty state, the rows and the pagination are rebuilt together after a
+      mutation, because the server is what decides which tickets still match
+      the filters in force — never the client.
+
+      The chips and the bulk toolbar sit above it rather than among it: the
+      chips are a reading of the URL and the toolbar is a reading of the
+      viewer's capabilities, so neither changes when the result does. That
+      is also why the list controls bar moved down here — it is governed by
+      whether there are rows, and it belongs against the rows it heads. }}
+  {{> local_moodesk/ticket_list_results }}
+
+</div>

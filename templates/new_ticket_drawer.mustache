@@ -1,0 +1,77 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/new_ticket_drawer
+
+    Right-anchored overlay panel hosting the ticket submission form on the list
+    and dashboard screens.
+
+    The panel is rendered on every page load and hidden with visibility (never
+    display:none), so its controls initialise against a container that already
+    has its final width — which the message box needs, since it sizes itself
+    from what is written into it and an element with no layout has no height to
+    grow from. The form inside is moodleform's
+    own markup, rendered verbatim and restyled by components/_drawer.scss; its
+    action points at submit.php, which stays the POST target and the no-JS
+    fallback. The form's own action buttons are the drawer footer — the drawer
+    never adds a second pair.
+
+    Context variables:
+      * title      - Drawer heading ("Submit a support ticket")
+      * subtitle   - Supporting line under the heading
+      * closelabel - Accessible label for the close button
+      * unsavedconfirm - Prompt shown when closing with a ticket half written
+      * form       - Raw moodleform HTML (rendered elsewhere)
+
+    Example context (json):
+    {
+      "title": "Submit a support ticket",
+      "subtitle": "Fill in the details below to create a new support request.",
+      "closelabel": "Close",
+      "unsavedconfirm": "You have an unsent message. Discard it and close?",
+      "form": "<form class=\"mform\"></form>"
+    }
+}}
+<div class="mhd-ticket-drawer-mount" data-region="mhd-ticket-drawer"
+     data-unsaved-confirm="{{unsavedconfirm}}">
+    <div class="mhd-ticket-drawer__backdrop" data-region="mhd-drawer-backdrop"></div>
+    {{! A modal dialog, not complementary content: `aside` cannot carry
+        role="dialog" or aria-modal and the validator rejects both. }}
+    <div class="mhd-ticket-drawer"
+         data-region="mhd-drawer-panel"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="mhd-ticket-drawer-title">
+        <header class="mhd-ticket-drawer__header">
+            <div class="mhd-ticket-drawer__heading">
+                <h2 class="mhd-ticket-drawer__title" id="mhd-ticket-drawer-title">{{title}}</h2>
+                <p class="mhd-ticket-drawer__subtitle">{{subtitle}}</p>
+            </div>
+            <button type="button"
+                    class="mhd-ticket-drawer__close"
+                    data-action="mhd-drawer-close"
+                    aria-label="{{closelabel}}">
+                <svg class="mhd-ticket-drawer__close-icon" aria-hidden="true" focusable="false">
+                    <use href="#mhd-icon-close"></use>
+                </svg>
+            </button>
+        </header>
+        <div class="mhd-ticket-drawer__body" data-region="mhd-drawer-body">
+            {{{form}}}
+        </div>
+    </div>
+</div>

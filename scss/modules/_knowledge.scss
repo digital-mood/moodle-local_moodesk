@@ -1,0 +1,320 @@
+// =============================================================================
+// modules/_knowledge.scss
+// Knowledge base — the reader's landing (KB-03): search, categories, cards.
+//
+// A reading surface, and it must look like one: no table, no row actions, no
+// status. The search box (components/_search-box.scss) is the page's primary
+// control; the categories are a navigation beside the list, not a filter bar;
+// each article is a card on the shared card shell.
+//
+// ── Layout ───────────────────────────────────────────────────────────────────
+// Two columns from 992px up — the category nav at a fixed width, the list
+// taking the rest and capped at a reading width. Below 992px the nav becomes
+// chips above the list, wrapping onto as many lines as they need, so a phone
+// spends its height on articles rather than on a column of names.
+//
+// The category is help for exploring, not the page's architecture: the nav is
+// narrow, quiet, and dims to orientation while a search is showing.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/breakpoints' as bp;
+
+$_knowledge-nav-width: 240px;
+$_knowledge-list-width: 760px;
+
+// ── The page ─────────────────────────────────────────────────────────────────
+
+.mhd-knowledge__search {
+  margin-bottom: v.$mhd-space-lg;
+}
+
+.mhd-knowledge__body {
+  display: flex;
+  align-items: flex-start;
+  gap: v.$mhd-space-xl;
+}
+
+// ── Category navigation ──────────────────────────────────────────────────────
+// Links are written as `.mhd-knowledge .x`: base/_app-reset.scss colours every
+// `.moodesk-app a` at two classes' weight, and a link that is a navigation
+// item or a card title has its own colour to keep.
+
+.mhd-category-nav {
+  flex: 0 0 $_knowledge-nav-width;
+  // Stays in view while the list scrolls, under the shell's top bar.
+  position: sticky;
+  top: v.$mhd-space-lg;
+}
+
+.mhd-category-nav__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mhd-knowledge .mhd-category-nav__link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: v.$mhd-space-sm;
+  padding: v.$mhd-space-sm v.$mhd-space-md;
+  border-radius: v.$mhd-radius-md;
+  color: c.$mhd-color-text;
+  font-size: v.$mhd-font-size-sm;
+  text-decoration: none;
+  transition: background-color v.$mhd-transition-fast;
+
+  &:hover,
+  &:focus-visible {
+    background: c.$mhd-color-row-hover;
+    color: c.$mhd-color-text;
+    text-decoration: none;
+  }
+
+  &.is-active {
+    background: c.$mhd-color-primary-soft;
+    color: c.$mhd-color-primary-strong;
+    font-weight: v.$mhd-font-weight-semibold;
+  }
+}
+
+.mhd-category-nav__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mhd-category-nav__count {
+  flex: 0 0 auto;
+  font-size: v.$mhd-font-size-xs;
+  font-variant-numeric: tabular-nums;
+  color: c.$mhd-color-text-muted;
+}
+
+// While a search is showing the nav is a map, not a control on the results.
+.mhd-knowledge .mhd-category-nav--dimmed .mhd-category-nav__link:not(:hover):not(:focus-visible) {
+  color: c.$mhd-color-text-muted;
+
+  &.is-active {
+    background: transparent;
+    font-weight: v.$mhd-font-weight-regular;
+  }
+}
+
+// ── The list ─────────────────────────────────────────────────────────────────
+
+.mhd-knowledge__list {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: $_knowledge-list-width;
+}
+
+.mhd-knowledge__list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: v.$mhd-space-md;
+  margin-bottom: v.$mhd-space-md;
+}
+
+.mhd-knowledge__heading {
+  margin: 0;
+  font-size: v.$mhd-font-size-lg;
+  font-weight: v.$mhd-font-weight-semibold;
+  color: c.$mhd-color-text;
+  overflow-wrap: anywhere;
+}
+
+.mhd-knowledge__heading-count {
+  margin-left: v.$mhd-space-xs;
+  font-size: v.$mhd-font-size-sm;
+  font-weight: v.$mhd-font-weight-regular;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-knowledge__more {
+  margin: -(v.$mhd-space-sm) 0 v.$mhd-space-md;
+  font-size: v.$mhd-font-size-sm;
+}
+
+.mhd-kb-list {
+  display: flex;
+  flex-direction: column;
+  gap: v.$mhd-space-sm;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// One article. The whole card is not a link — the title is, and the excerpt
+// is text a reader may select — so the shell's hover is what says "this is
+// something you open".
+.mhd-kb-card__body {
+  padding: v.$mhd-space-md v.$mhd-space-lg;
+}
+
+.mhd-kb-card__title {
+  margin: 0 0 v.$mhd-space-xs;
+  font-size: v.$mhd-font-size-md;
+  font-weight: v.$mhd-font-weight-semibold;
+  line-height: v.$mhd-line-height-tight;
+}
+
+.mhd-knowledge .mhd-kb-card__link {
+  color: c.$mhd-color-text;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    color: c.$mhd-color-primary;
+    text-decoration: underline;
+  }
+}
+
+.mhd-kb-card__excerpt {
+  margin: 0 0 v.$mhd-space-sm;
+  font-size: v.$mhd-font-size-sm;
+  line-height: v.$mhd-line-height;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-kb-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-xs v.$mhd-space-md;
+  margin: 0;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+}
+
+.mhd-kb-card__category {
+  font-weight: v.$mhd-font-weight-medium;
+  color: c.$mhd-color-text;
+}
+
+// A search term inside a title or an excerpt. The semantic element, with a
+// soft fill and an underline so the cue is not colour alone.
+.mhd-kb-card mark {
+  padding: 0 1px;
+  background: c.$mhd-color-primary-soft;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: c.$mhd-color-primary;
+  text-underline-offset: 2px;
+  border-radius: 2px;
+}
+
+.mhd-knowledge__empty {
+  padding: v.$mhd-space-xl v.$mhd-space-lg;
+  text-align: center;
+  background: c.$mhd-color-surface;
+  border: 1px dashed c.$mhd-color-border-strong;
+  border-radius: v.$mhd-radius-lg;
+
+  .mhd-action-group {
+    justify-content: center;
+    margin-top: v.$mhd-space-md;
+  }
+}
+
+.mhd-knowledge__empty--none {
+  max-width: $_knowledge-list-width;
+}
+
+.mhd-knowledge__pagination {
+  margin-top: v.$mhd-space-lg;
+}
+
+// ── The way out ──────────────────────────────────────────────────────────────
+// Quiet, at the foot: the second choice on a page whose first choice is
+// finding the answer here.
+.mhd-knowledge__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-sm v.$mhd-space-lg;
+  max-width: $_knowledge-list-width;
+  margin-top: v.$mhd-space-xl;
+  padding-top: v.$mhd-space-lg;
+  border-top: 1px solid c.$mhd-color-border;
+}
+
+.mhd-knowledge__cta-text {
+  margin: 0;
+  color: c.$mhd-color-text-muted;
+}
+
+// ── Below the desktop step: chips above the list ─────────────────────────────
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-knowledge__body {
+    flex-direction: column;
+    gap: v.$mhd-space-md;
+  }
+
+  .mhd-category-nav {
+    position: static;
+    flex: 0 0 auto;
+    align-self: stretch;
+    min-width: 0;
+  }
+
+  // Chips that WRAP, not a row that scrolls sideways. The plan said scroll;
+  // the phone said no: with the row as a horizontal scroller (overflow-x:
+  // auto, items nowrap) Chrome on a 390px device widened the layout viewport
+  // to 579px and the whole page scrolled sideways, and neither containment
+  // nor min-width nor a zero width on the scroller changed that — only
+  // letting the chips wrap did. Wrapping is also the more honest layout:
+  // every category is visible without a hidden scroll, and a knowledge base
+  // has a handful of them, not fifty.
+  .mhd-category-nav__list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: v.$mhd-space-sm;
+  }
+
+  .mhd-category-nav__item {
+    flex: 0 0 auto;
+  }
+
+  .mhd-knowledge .mhd-category-nav__link {
+    // A chip: one line, a touch target, a border instead of a fill at rest.
+    min-height: 36px;
+    padding: 0 v.$mhd-space-md;
+    align-items: center;
+    white-space: nowrap;
+    border: 1px solid c.$mhd-color-border-strong;
+    border-radius: v.$mhd-radius-pill;
+    background: c.$mhd-color-surface;
+
+    &.is-active {
+      border-color: c.$mhd-color-primary;
+    }
+  }
+
+  .mhd-knowledge__list {
+    max-width: none;
+  }
+}
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-kb-card__body {
+    padding: v.$mhd-space-md;
+  }
+
+  .mhd-knowledge__cta {
+    flex-direction: column;
+    align-items: stretch;
+
+    // The action by element, not by its component class (components/_button.scss
+    // alone styles a button).
+    > a {
+      width: 100%;
+    }
+  }
+}

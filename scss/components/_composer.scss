@@ -1,0 +1,196 @@
+// =============================================================================
+// components/_composer.scss
+//
+// Writing a message and attaching files to it — the parts two screens share.
+//
+// Three things live here:
+//
+//   the message box       the growing textarea, addressed by the data-region
+//                         both forms put on it. Everything here applies to it
+//                         wherever it renders; the reply composer's own frame
+//                         adds to this rather than repeating it (see
+//                         modules/_ticket-detail.scss).
+//   .mhd-attach*          the New ticket form's attach button — a paperclip and
+//                         a word, sitting under the description on both of its
+//                         mounts (the drawer over the list, and submit.php).
+//   .mhd-composer__file*  the list of files a draft is holding, rendered by
+//                         amd/src/composer_attachments.js from what the server
+//                         reports. Both forms draw the same list, so it cannot
+//                         live inside either one's page styles — it moved here
+//                         out of modules/_ticket-detail.scss unchanged,
+//                         selector for selector, so the reply composer sees no
+//                         difference.
+//
+// Not to be confused with components/_attachments.scss, which styles the files
+// already saved on a ticket (`.mhd-attachment-*`). These are the ones on their
+// way in.
+//
+// The reply composer keeps its own button — a disclosure in its action bar,
+// because a reply sits under a conversation and every line the composer claims
+// at rest is a line of thread the agent cannot see. What the two share is the
+// mechanism, not the lid.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+// ── The message box ──────────────────────────────────────────────────────────
+// A ceiling and nothing else. The box opens at the element's `rows` and
+// amd/src/composer_autogrow.js grows it to fit what is written; this is what
+// stops it there, after which it scrolls. Without it an auto-growing box has no
+// limit but the length of the message, and a long description would push the
+// rest of the form off the panel.
+//
+// Addressed by data-region, not by class. Both forms declare `mhd-composer__input`
+// on the element, but a moodleform element's `class` attribute never reaches the
+// control: Moodle 5 renders it on the `.fitem` wrapper and leaves the textarea
+// with `form-control` and nothing else. `textarea.mhd-composer__input` therefore
+// matched no element in either form, and both message boxes had been running on
+// stock Bootstrap — no ceiling, and a drag handle that fights the auto-grow.
+// The data-region is the plugin's own hook, it is what every module in amd/src
+// already uses to find these boxes, and Moodle has no opinion about it.
+//
+// Scoped under .moodesk-app, and deliberately not under any one screen — the
+// reply composer's own rules are more specific and add its frame on top.
+
+.moodesk-app textarea[data-region="mhd-composer-input"] {
+  max-height: v.$mhd-composer-input-max;
+  line-height: v.$mhd-composer-input-line-height;
+  // The box sizes itself; a drag handle would fight the auto-grow.
+  resize: none;
+  overflow-y: auto;
+}
+
+// ── The attach button ────────────────────────────────────────────────────────
+// Directly under the message box, sharing its left edge. It is the upload, not
+// a disclosure: clicking it opens Moodle's file picker.
+
+.mhd-attach {
+  // The message box's own .fitem carries Bootstrap's mb-3 (16px), which is the
+  // rhythm between two form fields — too much between a field and a control
+  // that belongs to it. Pulling half of it back gives the 8px that reads as
+  // "these two are one thing", without touching the field's margin and thereby
+  // the spacing of every other field in the form.
+  margin-top: calc(var(--mhd-space-sm, 8px) - var(--mhd-space-md, 16px));
+  margin-bottom: var(--mhd-space-md, 16px);
+
+  // The trigger is the Button component, outlined at xsmall — including its
+  // hover, focus ring and the disabled state it wears at the file limit, where
+  // it stays put rather than vanishing because a control that disappears reads
+  // as a bug. Its icon is the component's own slot, sized by the size.
+
+  &__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--mhd-color-primary, #2563eb);
+    color: #fff;
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+    font-weight: var(--mhd-font-weight-semibold, 600);
+    line-height: 1;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  // Holds the file list once there is one, and claims nothing until then: a
+  // ticket with nothing attached costs the form no height at all.
+  //
+  // The separation is on the list rather than on the panel around it, because
+  // the panel is always in the DOM — it is what the module renders into — and a
+  // margin there would be 8px of empty space on every ticket that carries no
+  // files. No list, no margin.
+  &__panel .mhd-composer__files {
+    margin-top: var(--mhd-space-sm, 8px);
+  }
+
+  &__note {
+    margin: var(--mhd-space-xs, 4px) 0 0;
+    color: var(--mhd-color-text-muted, #6b7280);
+    font-size: var(--mhd-font-size-xs, 0.75rem);
+  }
+}
+
+// ── The files a draft is holding ─────────────────────────────────────────────
+// Rendered from local_moodesk/composer_attachment_list, which both forms use.
+// Moved here from modules/_ticket-detail.scss with the compiled selectors
+// unchanged — they were written as `&__files` under `.mhd-composer`, which is
+// the same `.mhd-composer__files` these are.
+
+.mhd-composer__files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mhd-space-sm, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mhd-composer__file {
+  display: flex;
+  align-items: center;
+  gap: var(--mhd-space-sm, 8px);
+  padding: 6px 10px;
+  border: 1px solid var(--mhd-color-border, #e5e7eb);
+  border-radius: var(--mhd-radius-md, 6px);
+  background: var(--mhd-color-surface, #fff);
+}
+
+.mhd-composer__file-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--mhd-color-text-muted, #6b7280);
+}
+
+.mhd-composer__file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mhd-color-text, #1f2937);
+  font-size: var(--mhd-font-size-xs, 0.75rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--mhd-color-primary, #2563eb);
+  }
+}
+
+.mhd-composer__file-size {
+  flex: 0 0 auto;
+  color: var(--mhd-color-text-muted, #6b7280);
+  font-size: var(--mhd-font-size-xs, 0.75rem);
+  white-space: nowrap;
+}
+
+.mhd-composer__file-remove {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mhd-color-text-muted, #6b7280);
+  font-size: var(--mhd-font-size-sm, 0.8125rem);
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mhd-color-surface-muted, #f1f3f9);
+    color: var(--mhd-color-danger, #dc3545);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mhd-color-primary, #2563eb);
+    outline-offset: 1px;
+  }
+}

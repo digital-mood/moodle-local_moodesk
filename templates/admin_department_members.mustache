@@ -1,0 +1,223 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/admin_department_members
+
+    Department member management page — lists current members and provides a
+    search/add control for assigning additional agents to the department.
+
+    Context variables:
+      * deptid       - Department ID (used in hidden form fields)
+      * deptname     - Department name (informational)
+      * members[]    - Current members: {userid, fullname, email, avatar, pageurl, sesskey}
+      * hasmembers   - True when the department has at least one member
+      * available[]  - Available agents to add: {id, fullname, email}
+      * hasavailable - True when there is at least one assignable agent
+      * pageurl      - Base URL for POST actions (add/remove)
+      * clearurl     - Page URL without the search query param
+      * sesskey      - Moodle sesskey for CSRF protection
+      * search       - Current search filter value
+      * hassearch    - True when a search filter is active
+      * backurl      - URL back to the departments list
+
+    The member list is the product's table — components/_datatable.scss owns the
+    surface, the header, the row and what happens below 992px, where each row
+    becomes a card because it carries a control.
+
+    The panel heading is `.mhd-datatable-title`, not Bootstrap's `.card-header`:
+    same job, but the Bootstrap one brings the active Moodle theme's border,
+    padding and grey with it, so a panel heading looked different depending on
+    whether the screen had been migrated.
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "Members: Support",
+        "description": null,
+        "meta": null,
+        "actions": [],
+        "primaryaction": null,
+        "hasactions": false
+      },
+      "deptid": 5,
+      "deptname": "Support",
+      "hasmembers": true,
+      "members": [
+        {"userid": 12, "fullname": "Jane Doe", "email": "jane@example.com",
+         "avatar": "<span class=\"userpicture\"></span>",
+         "pageurl": "/local/moodesk/admin/department_members.php?id=5", "sesskey": "abc123"}
+      ],
+      "hasavailable": true,
+      "available": [
+        {"id": 13, "fullname": "John Smith", "email": "john@example.com"}
+      ],
+      "pageurl": "/local/moodesk/admin/department_members.php?id=5",
+      "clearurl": "/local/moodesk/admin/department_members.php?id=5",
+      "sesskey": "abc123",
+      "search": "",
+      "hassearch": false,
+      "backurl": "/local/moodesk/admin/departments.php"
+    }
+}}
+<div class="mhd-dept-members">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! ── Current members ─────────────────────────────────────────────────── }}
+  <div class="mhd-datatable-surface mhd-mb-lg">
+    <div class="mhd-datatable-title">
+      <span>{{#str}} department_members, local_moodesk {{/str}}</span>
+    </div>
+
+    {{#hasmembers}}
+    <div class="mhd-datatable-scroll">
+    <table class="mhd-datatable table-reboot">
+      <caption class="mhd-sr-only">{{#str}} department_members, local_moodesk {{/str}}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{#str}} fullnameuser, core {{/str}}</th>
+          <th scope="col"><span class="mhd-sr-only">{{#str}} actions, local_moodesk {{/str}}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#members}}
+        <tr>
+          {{! A person, so the entity cell carries a face. The email is the one
+              fact that belongs beside the name, so it is the cell's secondary
+              line rather than a column of its own — which is also what lets
+              this table hold its shape on a phone. }}
+          <th scope="row" class="mhd-cell--entity">
+            <span class="mhd-entity">
+              <span class="mhd-entity__avatar">{{{avatar}}}</span>
+              <span class="mhd-entity__body">
+                <span class="mhd-entity__name">{{fullname}}</span>
+                <span class="mhd-entity__meta">{{email}}</span>
+              </span>
+            </span>
+          </th>
+          <td class="mhd-cell--actions">
+            <div class="mhd-action-group">
+              <form method="post" action="{{pageurl}}">
+                <input type="hidden" name="action"  value="remove">
+                <input type="hidden" name="userid"  value="{{userid}}">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                {{! Destructive and repeated once per row: outlined-danger, not
+                    filled — a filled red on every row would read as an alert
+                    rather than as an action. }}
+                <button type="submit" class="mhd-btn mhd-btn--outlined-danger mhd-btn--icon"
+                        aria-label="{{#str}} department_remove_member, local_moodesk {{/str}}"
+                        title="{{#str}} department_remove_member, local_moodesk {{/str}}">
+                  <svg class="mhd-btn__icon" aria-hidden="true" focusable="false">
+                    <use href="#mhd-icon-trash"></use>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {{/members}}
+      </tbody>
+    </table>
+    </div>
+    {{/hasmembers}}
+
+    {{^hasmembers}}
+    <div class="mhd-datatable-empty">
+      <div class="mhd-empty-state">
+        <svg class="mhd-empty-state-icon" aria-hidden="true" focusable="false">
+          <use href="#mhd-icon-users"></use>
+        </svg>
+        <p class="mhd-empty-state-desc mb-0">{{#str}} dept_no_members, local_moodesk {{/str}}</p>
+      </div>
+    </div>
+    {{/hasmembers}}
+  </div>
+
+  {{! ── Add agent ────────────────────────────────────────────────────────── }}
+  {{! The same surface as the list above it, so the two panels on this page are
+      the same object. `.mhd-datatable-body` is the pattern's inset for a
+      section that is not a table. }}
+  <div class="mhd-datatable-surface mhd-mb-lg">
+    <div class="mhd-datatable-title">
+      <span>{{#str}} department_add_member, local_moodesk {{/str}}</span>
+    </div>
+    <div class="mhd-datatable-body">
+
+      {{! Search filter — GET form, does not affect the POST actions above. The
+          same toolbar band and the same search field the Agents directory
+          uses, rather than a Bootstrap inline form. }}
+      <form method="get" action="{{pageurl}}" class="mhd-table-toolbar">
+        <input type="hidden" name="id" value="{{deptid}}">
+        <div class="mhd-table-toolbar__filters">
+          <div class="mhd-filter-search">
+            <svg class="mhd-filter-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <circle cx="5.5" cy="5.5" r="4" stroke="#adb5bd" stroke-width="1.5"/>
+              <path d="M9 9L12 12" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input type="text" name="search" value="{{search}}" class="mhd-filter-search-input"
+                   placeholder="{{#str}} dept_filter_agents, local_moodesk {{/str}}"
+                   aria-label="{{#str}} dept_filter_agents, local_moodesk {{/str}}">
+          </div>
+          <div class="mhd-filter-apply">
+            <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall">
+              {{#str}} dept_search, local_moodesk {{/str}}
+            </button>
+            {{#hassearch}}
+            <a href="{{clearurl}}" class="mhd-btn mhd-btn--text mhd-btn--xsmall">
+              {{#str}} dept_clear_filter, local_moodesk {{/str}}
+            </a>
+            {{/hassearch}}
+          </div>
+        </div>
+      </form>
+
+      {{#hasavailable}}
+      <form method="post" action="{{pageurl}}">
+        <input type="hidden" name="action"  value="add">
+        <input type="hidden" name="sesskey" value="{{sesskey}}">
+        {{! Not an input group. An M3 button is corner-full, and a fully rounded
+            button welded to the square end of a select reads as a rendering
+            fault rather than as a pair. The panel's primary action, hence
+            filled — at the dense size, because a 40px button beside a small
+            select would be the taller of the two by a third. }}
+        <div class="mhd-member-add">
+          <div class="mhd-filter-select">
+            <select name="userid" aria-label="{{#str}} fullnameuser, core {{/str}}">
+              {{#available}}
+              <option value="{{id}}">{{fullname}} &mdash; {{email}}</option>
+              {{/available}}
+            </select>
+          </div>
+          <button type="submit" class="mhd-btn mhd-btn--filled mhd-btn--xsmall">
+            {{#str}} department_add_member, local_moodesk {{/str}}
+          </button>
+        </div>
+      </form>
+      {{/hasavailable}}
+
+      {{^hasavailable}}
+      <p class="text-muted mb-0">{{#str}} dept_all_assigned, local_moodesk {{/str}}</p>
+      {{/hasavailable}}
+
+    </div>
+  </div>
+
+  <p>
+    <a href="{{backurl}}">{{#str}} dept_back_to_list, local_moodesk {{/str}}</a>
+  </p>
+
+</div>

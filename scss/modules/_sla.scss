@@ -1,0 +1,118 @@
+// =============================================================================
+// modules/_sla.scss
+// SLA visual layer — PRO-2.
+//
+// Covers:
+//   - Progress bars in the ticket detail sidebar panel (.mhd-sla-panel)
+//   - Color system: ok (green) → warning (yellow) → danger (orange) → breach (red)
+//   - SLA remaining label colors (.mhd-sla-remaining)
+//   - Sort-by-urgency link (.mhd-sla-sort-link) in the ticket list
+//
+// The SLA state label in the ticket list and in the detail rail is a Pill —
+// see components/_pill.scss. Nothing about its size is decided here.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// CSS custom properties — SLA color palette.
+// Override these in a theme if needed.
+// -----------------------------------------------------------------------------
+:root {
+    --mhd-sla-ok:      #198754; // Bootstrap success green
+    --mhd-sla-warning: #ffc107; // Bootstrap warning yellow
+    --mhd-sla-danger:  #fd7e14; // Bootstrap orange
+    --mhd-sla-breach:  #dc3545; // Bootstrap danger red
+    --mhd-sla-none:    #dee2e6; // Bootstrap border grey
+    --mhd-sla-paused:  #6c757d; // Bootstrap secondary grey — the clock is stopped
+}
+
+// -----------------------------------------------------------------------------
+// SLA panel card (ticket detail sidebar)
+// -----------------------------------------------------------------------------
+// The panel's header is .mhd-rail-card__header (modules/_ticket-detail.scss)
+// and its state label is a Pill. Nothing left to style here — the
+// .card-header .badge rule that used to live here stopped matching when the
+// rail card replaced the Bootstrap card markup.
+
+.mhd-sla-item {
+    // Each dimension (response / resolve) block.
+}
+
+.mhd-sla-label {
+    font-size: 0.8rem;
+    color: var(--mhd-color-text-muted, #6c757d);
+    font-weight: 500;
+}
+
+// -----------------------------------------------------------------------------
+// Progress bar
+// -----------------------------------------------------------------------------
+.mhd-sla-progress {
+    height: 6px;
+    background: var(--mhd-sla-none);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mhd-sla-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+
+    &.sla-ok      { background: var(--mhd-sla-ok); }
+    &.sla-warning { background: var(--mhd-sla-warning); }
+    &.sla-danger  { background: var(--mhd-sla-danger); }
+    &.sla-breach  { background: var(--mhd-sla-breach); }
+    &.sla-none    { background: var(--mhd-sla-none); }
+
+    // A paused bar is deliberately colourless: it is neither healthy nor at
+    // risk, it is simply not counting. The transition is dropped with it, since
+    // there is no movement left to animate.
+    &.sla-paused  { background: var(--mhd-sla-paused); transition: none; }
+}
+
+// -----------------------------------------------------------------------------
+// Remaining label (right side of progress bar header)
+// -----------------------------------------------------------------------------
+.mhd-sla-remaining {
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &.sla-ok      { color: var(--mhd-sla-ok); }
+    &.sla-warning { color: #d39e00; } // Darker yellow for readability on white bg.
+    &.sla-danger  { color: var(--mhd-sla-danger); }
+    &.sla-breach  { color: var(--mhd-sla-breach); }
+    &.sla-none    { color: var(--mhd-color-text-muted, #6c757d); }
+
+    // Longer than the countdowns it replaces, so it is allowed to wrap rather
+    // than push the label out of the card.
+    &.sla-paused  {
+        color: var(--mhd-sla-paused);
+        font-weight: 500;
+        white-space: normal;
+        text-align: right;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Sort-by-SLA link (ticket list, agents only)
+// -----------------------------------------------------------------------------
+.mhd-sla-sort-link {
+    font-size: 0.78rem;
+    color: var(--mhd-color-text-muted, #6c757d);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color 0.15s ease;
+
+    &::before {
+        content: '↕';
+        font-size: 0.72rem;
+    }
+
+    &:hover {
+        color: var(--mhd-sla-breach);
+        text-decoration: underline;
+    }
+}

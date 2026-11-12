@@ -1,0 +1,34 @@
+// =============================================================================
+// components/_entity-card.scss
+// An entity cell in card form, as a mixin and nothing else, for the same reason
+// as components/_datatable-cards.scss. The reasoning is in _entity-cell.scss.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+@mixin mhd-entity-card {
+  // In a cell the name gives way and the badge holds its width, because there
+  // is a column edge and something has to. In a card there is a line below, so
+  // neither has to give: the badge drops under the name rather than squeezing
+  // it into two words on a phone. Measured at 390 with "No membership" beside
+  // an "Active" pill, which is what forced the name to wrap.
+  .mhd-entity__title {
+    flex-wrap: wrap;
+  }
+
+  .mhd-entity__name {
+    font-size: v.$mhd-font-size-md;
+    font-weight: v.$mhd-font-weight-semibold;
+    white-space: normal;
+    // A name with no spaces in it is still a name; it wraps rather than
+    // widening the card past the viewport.
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+
+  .mhd-entity__meta {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+}

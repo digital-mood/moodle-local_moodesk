@@ -1,0 +1,29 @@
+// =============================================================================
+// states/_loading.scss
+// Loading state styles — skeleton screens, spinners, progress indicators.
+// =============================================================================
+
+// Loading overlay — applied to a container while async content loads.
+.mhd-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+// Skeleton line — placeholder for text content while loading.
+.mhd-skeleton-line {
+  display: block;
+  height: 14px;
+  background: linear-gradient(90deg, #f0f2f4 25%, #e4e8ec 50%, #f0f2f4 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: mhd-pulse 1.4s ease-in-out infinite;
+
+  + .mhd-skeleton-line {
+    margin-top: 8px;
+  }
+
+  &.mhd-skeleton-short { width: 40%; }
+  &.mhd-skeleton-medium { width: 65%; }
+  &.mhd-skeleton-full { width: 100%; }
+}

@@ -1,0 +1,22 @@
+// =============================================================================
+// states/_disabled.scss
+// Disabled state styles — applied to interactive elements that are not
+// currently actionable (e.g. controls on a closed ticket).
+// =============================================================================
+
+// Generic disabled container — dims and blocks interaction.
+.mhd-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+  cursor: not-allowed;
+}
+
+// Disabled form control override — used when Bootstrap's :disabled
+// pseudo-class does not apply (e.g. read-only Mustache-rendered selects).
+.mhd-control-disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border-color: #dee2e6;
+  pointer-events: none;
+}

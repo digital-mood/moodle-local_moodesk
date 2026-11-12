@@ -1,0 +1,333 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/ticket_detail_sidebar
+
+    Ticket detail — management rail. Rendered inside .mhd-detail__rail by
+    ticket_detail.mustache when the user holds local/moodesk:manage. The rail is
+    a management surface: it never renders for requesters, and each card carries
+    its own gate on top (edition, feature, ticket state).
+
+    Order (product decision): SLA → Properties → Merge → Custom fields →
+    Merged source fields → Merges received → CSAT.
+
+    Properties auto-save. Every select posts through ajax.php on `change`, which
+    re-runs the capability, transition and validation rules server-side. The
+    per-row Save button is the no-JavaScript path and the fallback when the AJAX
+    call fails; sidebar_actions.js hides it once auto-save is wired.
+
+    A ticket merged away (merged_into) gets the same card with its values
+    read-only: the server refuses every change to it, so no control is offered.
+
+    Context variables:
+      * hassla_panel          - True when the SLA card renders
+      * sla_panel             - {response, resolve, is_breach, is_warning}
+      * propseditable         - True for the editable rows; false on a merged source
+      * prioritylabel, categoryname, departmentname, assigneename
+                              - Current values, for the read-only list
+      * hasstatustransitions  - True when a status change is possible
+      * statustransitions[]   - Allowed transitions: [{value, label}]
+      * statuslabel           - Current status label (shown as the select's placeholder)
+      * priorityoptions[]     - [{value, label, selected}]
+      * hascategoryoptions    - True when the category row renders
+      * categoryoptions[]     - [{value, label, selected}]
+      * hasdepartmentoptions  - True when the department row renders
+      * departmentoptions[]   - [{value, label, selected}]
+      * pluginsectionsproperties[] - {html} properties plugins add (hook ticket_detail_sections)
+      * pluginreadonlyproperties[] - {label, value} their read-only rows
+      * hasagents             - True when the assignment row renders
+      * agentselectoptions[]  - [{value, label, selected}]
+      * nodeptmembers         - True to show the "filtered to dept members" hint
+      * pluginsectionsactions[] - {html} cards plugins add (hook ticket_detail_sections, actions slot)
+      * pluginsectionsfields[] - {html} what plugins add (hook ticket_detail_sections, fields slot)
+      * hasmergedfields       - True when the merged source fields card renders
+      * hasmerges / merges[]  - Merges this ticket received, with the undo window
+      * haspluginsectionssidebar / pluginsectionssidebar[] - Plugin cards ({html})
+      * replyactionurl        - POST target for the no-JS fallback
+      * ajaxurl               - Endpoint used for auto-save
+      * ticketid              - Current ticket ID
+      * sesskey               - Moodle sesskey for CSRF protection
+
+    Example context (json):
+    {
+      "ticketid": 42,
+      "sesskey": "abc123",
+      "replyactionurl": "/local/moodesk/view.php?id=42",
+      "ajaxurl": "/local/moodesk/ajax.php",
+      "statuslabel": "Open",
+      "propseditable": true,
+      "hasstatustransitions": true,
+      "statustransitions": [{"value": 6, "label": "In progress"}],
+      "priorityoptions": [{"value": 2, "label": "High", "selected": true}],
+      "hasagents": true,
+      "agentselectoptions": [{"value": 12, "label": "Jane Doe", "selected": true}]
+    }
+}}
+
+{{! ── SLA (PRO-2) ── }}
+{{#hassla_panel}}
+{{#sla_panel}}
+{{! The band exists so the SLA can hold the top of the rail while the cards
+    below it scroll: whether a ticket is breaching is the one thing an agent
+    should never have to scroll back up to check. It is a wrapper and nothing
+    else on the canonical page, where the rail has no scrollport of its own —
+    see modules/_ticket-detail.scss. }}
+<div class="mhd-rail-band" data-mhd-sla-band>
+<section class="mhd-rail-card mhd-sla-panel">
+  <div class="mhd-rail-card__header">
+    <span class="mhd-rail-card__title">{{#str}} sla_panel_heading, local_moodesk {{/str}}</span>
+    {{#is_breach}}<span class="mhd-pill mhd-pill--danger">{{#str}} sla_status_breach, local_moodesk {{/str}}</span>{{/is_breach}}
+    {{#is_warning}}<span class="mhd-pill mhd-pill--warning">{{#str}} sla_status_warning, local_moodesk {{/str}}</span>{{/is_warning}}
+  </div>
+  <div class="mhd-rail-card__body">
+
+    {{#response}}
+    {{#enabled}}
+    <div class="mhd-sla-item">
+      <div class="mhd-sla-item__head">
+        <span class="mhd-sla-label">{{#str}} sla_first_response, local_moodesk {{/str}}</span>
+        <span class="mhd-sla-remaining {{color_class}}">{{remaining}}</span>
+      </div>
+      <div class="mhd-sla-progress" role="progressbar"
+           aria-valuenow="{{pct}}" aria-valuemin="0" aria-valuemax="100">
+        <div class="mhd-sla-bar {{color_class}}" style="width: {{pct}}%"></div>
+      </div>
+    </div>
+    {{/enabled}}
+    {{/response}}
+
+    {{#resolve}}
+    {{#enabled}}
+    <div class="mhd-sla-item">
+      <div class="mhd-sla-item__head">
+        <span class="mhd-sla-label">{{#str}} sla_resolution, local_moodesk {{/str}}</span>
+        <span class="mhd-sla-remaining {{color_class}}">{{remaining}}</span>
+      </div>
+      <div class="mhd-sla-progress" role="progressbar"
+           aria-valuenow="{{pct}}" aria-valuemin="0" aria-valuemax="100">
+        <div class="mhd-sla-bar {{color_class}}" style="width: {{pct}}%"></div>
+      </div>
+    </div>
+    {{/enabled}}
+    {{/resolve}}
+
+  </div>
+</section>
+</div>
+{{/sla_panel}}
+{{/hassla_panel}}
+
+{{! ── Properties ── }}
+<section class="mhd-rail-card mhd-properties"
+         data-mhd-toast-saved="{{#str}} detail_toast_saved, local_moodesk, {{ticketid}} {{/str}}"
+         data-mhd-toast-failed="{{#str}} detail_save_failed, local_moodesk {{/str}}">
+  <div class="mhd-rail-card__header">
+    <span class="mhd-rail-card__title">{{#str}} detail_properties, local_moodesk {{/str}}</span>
+  </div>
+  <div class="mhd-rail-card__body">
+
+    {{! Read-only on a ticket merged away. Label over value, as the custom
+        fields card does for the same ticket. }}
+    {{^propseditable}}
+    <dl class="mhd-props-readonly">
+      <dt class="mhd-props-readonly__label">{{#str}} ticket_status, local_moodesk {{/str}}</dt>
+      <dd class="mhd-props-readonly__value" data-region="mhd-prop-status-value">{{statuslabel}}</dd>
+      <dt class="mhd-props-readonly__label">{{#str}} ticket_priority, local_moodesk {{/str}}</dt>
+      <dd class="mhd-props-readonly__value">{{prioritylabel}}</dd>
+      <dt class="mhd-props-readonly__label">{{#str}} ticket_category, local_moodesk {{/str}}</dt>
+      <dd class="mhd-props-readonly__value">{{#categoryname}}{{categoryname}}{{/categoryname}}{{^categoryname}}&mdash;{{/categoryname}}</dd>
+      <dt class="mhd-props-readonly__label">{{#str}} ticket_department, local_moodesk {{/str}}</dt>
+      <dd class="mhd-props-readonly__value">{{#departmentname}}{{departmentname}}{{/departmentname}}{{^departmentname}}&mdash;{{/departmentname}}</dd>
+      {{#pluginreadonlyproperties}}
+      <dt class="mhd-props-readonly__label">{{label}}</dt>
+      <dd class="mhd-props-readonly__value">{{value}}</dd>
+      {{/pluginreadonlyproperties}}
+      <dt class="mhd-props-readonly__label">{{#str}} ticket_assignee, local_moodesk {{/str}}</dt>
+      <dd class="mhd-props-readonly__value">{{#assigneename}}{{assigneename}}{{/assigneename}}{{^assigneename}}{{#str}} unassigned, local_moodesk {{/str}}{{/assigneename}}</dd>
+    </dl>
+    {{/propseditable}}
+
+    {{#propseditable}}
+    {{! Status — the placeholder carries the current state so the select never
+        misreports it, and `required` keeps the no-JS Save from posting it. }}
+    {{#hasstatustransitions}}
+    <form class="mhd-prop" method="post" action="{{replyactionurl}}"
+          data-mhd-ajax="{{ajaxurl}}"
+          data-mhd-autosave="status"
+          data-mhd-ticketid="{{ticketid}}">
+      <input type="hidden" name="action"   value="status">
+      <input type="hidden" name="ticketid" value="{{ticketid}}">
+      <input type="hidden" name="sesskey"  value="{{sesskey}}">
+      <div class="mhd-prop__head">
+        <label class="mhd-prop__label" for="mhd-prop-status">
+          {{#str}} controls_status, local_moodesk {{/str}}
+        </label>
+        <span class="mhd-prop__saved" data-region="mhd-prop-saved" hidden>
+          {{#str}} detail_saved, local_moodesk {{/str}}
+        </span>
+      </div>
+      <select class="mhd-prop__select" id="mhd-prop-status" name="newstatus" required>
+        <option value="" selected disabled>{{statuslabel}}</option>
+        {{#statustransitions}}
+        <option value="{{value}}">{{label}}</option>
+        {{/statustransitions}}
+      </select>
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-prop__save">
+        {{#str}} controls_status_save, local_moodesk {{/str}}
+      </button>
+    </form>
+    {{/hasstatustransitions}}
+
+    {{! Priority }}
+    <form class="mhd-prop" method="post" action="{{replyactionurl}}"
+          data-mhd-ajax="{{ajaxurl}}"
+          data-mhd-autosave="priority"
+          data-mhd-ticketid="{{ticketid}}">
+      <input type="hidden" name="action"   value="priority">
+      <input type="hidden" name="ticketid" value="{{ticketid}}">
+      <input type="hidden" name="sesskey"  value="{{sesskey}}">
+      <div class="mhd-prop__head">
+        <label class="mhd-prop__label" for="mhd-prop-priority">
+          {{#str}} controls_priority, local_moodesk {{/str}}
+        </label>
+        <span class="mhd-prop__saved" data-region="mhd-prop-saved" hidden>
+          {{#str}} detail_saved, local_moodesk {{/str}}
+        </span>
+      </div>
+      <select class="mhd-prop__select" id="mhd-prop-priority" name="newpriority">
+        {{#priorityoptions}}
+        <option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>
+        {{/priorityoptions}}
+      </select>
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-prop__save">
+        {{#str}} controls_priority_save, local_moodesk {{/str}}
+      </button>
+    </form>
+
+    {{! Category }}
+    {{#hascategoryoptions}}
+    <form class="mhd-prop" method="post" action="{{replyactionurl}}"
+          data-mhd-ajax="{{ajaxurl}}"
+          data-mhd-autosave="updatecategory"
+          data-mhd-ticketid="{{ticketid}}">
+      <input type="hidden" name="action"   value="updatecategory">
+      <input type="hidden" name="ticketid" value="{{ticketid}}">
+      <input type="hidden" name="sesskey"  value="{{sesskey}}">
+      <div class="mhd-prop__head">
+        <label class="mhd-prop__label" for="mhd-prop-category">
+          {{#str}} controls_category, local_moodesk {{/str}}
+        </label>
+        <span class="mhd-prop__saved" data-region="mhd-prop-saved" hidden>
+          {{#str}} detail_saved, local_moodesk {{/str}}
+        </span>
+      </div>
+      <select class="mhd-prop__select" id="mhd-prop-category" name="categoryid">
+        {{#categoryoptions}}
+        <option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>
+        {{/categoryoptions}}
+      </select>
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-prop__save">
+        {{#str}} controls_category_save, local_moodesk {{/str}}
+      </button>
+    </form>
+    {{/hascategoryoptions}}
+
+    {{! Department (Phase 3) }}
+    {{#hasdepartmentoptions}}
+    <form class="mhd-prop" method="post" action="{{replyactionurl}}"
+          data-mhd-ajax="{{ajaxurl}}"
+          data-mhd-autosave="department"
+          data-mhd-ticketid="{{ticketid}}">
+      <input type="hidden" name="action"   value="department">
+      <input type="hidden" name="ticketid" value="{{ticketid}}">
+      <input type="hidden" name="sesskey"  value="{{sesskey}}">
+      <div class="mhd-prop__head">
+        <label class="mhd-prop__label" for="mhd-prop-department">
+          {{#str}} controls_department, local_moodesk {{/str}}
+        </label>
+        <span class="mhd-prop__saved" data-region="mhd-prop-saved" hidden>
+          {{#str}} detail_saved, local_moodesk {{/str}}
+        </span>
+      </div>
+      <select class="mhd-prop__select" id="mhd-prop-department" name="departmentid">
+        {{#departmentoptions}}
+        <option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>
+        {{/departmentoptions}}
+      </select>
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-prop__save">
+        {{#str}} controls_department_save, local_moodesk {{/str}}
+      </button>
+    </form>
+    {{/hasdepartmentoptions}}
+
+    {{! Properties plugins add (hook ticket_detail_sections) }}
+    {{#pluginsectionsproperties}}{{{html}}}{{/pluginsectionsproperties}}
+
+    {{! Assignment }}
+    {{#hasagents}}
+    <form class="mhd-prop" method="post" action="{{replyactionurl}}"
+          data-mhd-ajax="{{ajaxurl}}"
+          data-mhd-autosave="assign"
+          data-mhd-ticketid="{{ticketid}}">
+      <input type="hidden" name="action"   value="assign">
+      <input type="hidden" name="ticketid" value="{{ticketid}}">
+      <input type="hidden" name="sesskey"  value="{{sesskey}}">
+      <div class="mhd-prop__head">
+        <label class="mhd-prop__label" for="mhd-prop-assignee">
+          {{#str}} controls_assign, local_moodesk {{/str}}
+        </label>
+        <span class="mhd-prop__saved" data-region="mhd-prop-saved" hidden>
+          {{#str}} detail_saved, local_moodesk {{/str}}
+        </span>
+      </div>
+      <select class="mhd-prop__select" id="mhd-prop-assignee" name="assigneeid">
+        <option value="0">{{#str}} unassigned, local_moodesk {{/str}}</option>
+        {{#agentselectoptions}}
+        <option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>
+        {{/agentselectoptions}}
+      </select>
+      {{#nodeptmembers}}
+      <p class="mhd-prop__hint">{{#str}} department_agent_filtered, local_moodesk {{/str}}</p>
+      {{/nodeptmembers}}
+      <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--xsmall mhd-prop__save">
+        {{#str}} controls_assign_save, local_moodesk {{/str}}
+      </button>
+    </form>
+    {{/hasagents}}
+    {{/propseditable}}
+
+  </div>
+</section>
+
+{{#pluginsectionsactions}}{{{html}}}{{/pluginsectionsactions}}
+
+{{! ── Custom fields ──
+    A ticket's own metadata, and the agent's to edit: it belongs with the rest
+    of the properties rather than in the middle of the conversation, which is
+    where it used to sit. The conversation column is the thread and the composer
+    now, and nothing else.
+
+    The partial is shared with the no-rail mount, where a requester gets the
+    same block read-only in the main column. One component, two places — the
+    same arrangement the detail screen itself has. }}
+{{#pluginsectionsfields}}{{{html}}}{{/pluginsectionsfields}}
+
+
+{{! ── Plugin cards (hook ticket_detail_sections), after the base's own ── }}
+{{#haspluginsectionssidebar}}
+{{#pluginsectionssidebar}}{{{html}}}{{/pluginsectionssidebar}}
+{{/haspluginsectionssidebar}}

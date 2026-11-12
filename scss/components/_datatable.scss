@@ -1,0 +1,532 @@
+// =============================================================================
+// components/_datatable.scss
+//
+// The Data Table — mooDesk's one table pattern.
+//
+// SINGLE SOURCE OF TRUTH, in the same sense as components/_button.scss and
+// components/_pill.scss. A table in mooDesk is `.mhd-datatable` inside a
+// `.mhd-datatable-surface`, and it is the same object on every screen: the same
+// container, the same header treatment, the same row height, the same cell
+// padding, the same hover, the same empty state, the same responsive story.
+//
+// WHAT DIFFERS BETWEEN TABLES is what they list — columns, actions, density of
+// information. Departments carries three columns and Agents seven; that is
+// correct. What must not differ is the visual and interaction language, which
+// is why none of the numbers below may be restated by a module.
+//
+// ── Why this exists ──────────────────────────────────────────────────────────
+// The plugin had eighteen tables in two incompatible families, plus a third
+// that had stopped being used and was still shipping. Thirteen were Bootstrap's
+// `.table.table-sm` wearing whatever the active Moodle theme decided, five were
+// `.mhd-table` wearing ours, and `.mhd-rule-list` sat in the stylesheet with no
+// markup left to style. They disagreed on the container, the radius, the header
+// fill, the cell padding, the divider, the vertical alignment, the empty state
+// and what happens on a phone. Reading one told you nothing about the next.
+//
+// The Bootstrap half was the half that had to go: `.table` inherits whatever
+// the theme decides, which is exactly why the administration screens read as
+// Moodle screens rather than as mooDesk. All eighteen wear this now.
+//
+// `table-reboot` in the markup is NOT optional — Moodle 5 borders every `th` in
+// a table that does not carry `.table`, four `:not()` selectors deep, past what
+// this stylesheet can outrank. The pair belongs together: `table-reboot`
+// removes what Moodle draws, this decides what replaces it.
+//
+// ── The contract ─────────────────────────────────────────────────────────────
+//   .mhd-datatable-surface      the panel: border, radius, background
+//   .mhd-datatable-scroll       the horizontal scrollport, when one is needed
+//   .mhd-datatable              the table itself — `table-reboot` alongside
+//   .mhd-cell--entity           avatar/icon + name + secondary (entity-cell)
+//   .mhd-cell--name             a name with no entity behind it — the card's
+//                               title for configuration rows
+//   .mhd-cell--status           a Pill and nothing else
+//   .mhd-cell--numeric          right-aligned, tabular figures
+//   .mhd-cell--actions          the row's own controls, right-aligned
+//   .mhd-cell--empty            no value — kept in the table, dropped from
+//                               the card
+//   .mhd-cell--code             a URL or other long machine value, truncated
+//   .mhd-cell--attention        a figure the reader should stop at
+//   .mhd-cell--positive         a figure confirming things went well
+//   .mhd-action-group           the flex row those controls sit in
+//   .mhd-datatable-empty        nothing to list — wraps components/empty-state
+//   .mhd-datatable-pagination   core's paging bar, inside the surface
+//   tr.is-selected              a row the user has picked out
+//   .mhd-datatable--keyvalue    one subject described by labelled facts —
+//                               a licence panel, a detail summary
+//
+// A screen picks its columns. A screen never sets a row height, a cell padding,
+// a header colour, a divider or a hover — that is what put two table families
+// in this plugin in the first place.
+//
+// Loading is deliberately NOT declared here: states/_loading.scss already owns
+// `.mhd-loading`, which dims and disables any container it is put on, and the
+// surface is a container. A second spelling of the same state is how the two
+// table families started.
+//
+// Colour tokens live in abstracts/_colors.scss, dimensions in
+// abstracts/_variables.scss — this file defines neither.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/colors'      as c;
+@use '../abstracts/mixins'      as m;
+// The datatable owns the cell ROLE `.mhd-cell--entity`; the entity cell owns
+// what goes in it. Without this the card treatment for an entity column would
+// be written out again in every module that has one — and the first of the
+// sixteen migrations to forget it is the one where the two screens stop
+// matching.
+@use 'entity-cell';
+@forward 'datatable-cards';
+
+// ── The surface ──────────────────────────────────────────────────────────────
+// One panel, the shell's own radius, and the border that separates it from the
+// canvas. `overflow: hidden` is load-bearing: `border-collapse: collapse` will
+// not let a row round its own corners, so the surface does the rounding and
+// clips the first and last rows into it.
+
+.mhd-datatable-surface {
+  background: c.$mhd-color-surface;
+  border: 1px solid c.$mhd-color-border;
+  border-radius: v.$mhd-radius-lg;
+  overflow: hidden;
+}
+
+// ── The panel's own heading ──────────────────────────────────────────────────
+// A table that is one section of a page rather than the whole of it needs to
+// say what it lists — "Members", "Recent deliveries" — and the page heading is
+// already spoken for by the thing the section belongs to.
+//
+// This replaces Bootstrap's `.card-header`, which is what those screens reached
+// for: same job, but it brings the theme's own border, padding and grey with
+// it, so a panel heading looked different depending on whether the screen had
+// been migrated. The optional `__meta` is for a count or a hint, set beside the
+// title rather than under it.
+
+.mhd-datatable-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: v.$mhd-space-sm;
+  padding: v.$mhd-space-sm v.$mhd-datatable-cell-pad-x;
+  border-bottom: 1px solid c.$mhd-color-border;
+  // The same tone the header row uses, so a titled table reads as one block of
+  // chrome above the data rather than two bands of different greys.
+  background: c.$mhd-color-surface-muted;
+  font-size: v.$mhd-font-size-sm;
+  font-weight: v.$mhd-font-weight-semibold;
+  color: c.$mhd-color-text;
+}
+
+.mhd-datatable-title__meta {
+  flex: 0 0 auto;
+  font-size: v.$mhd-font-size-xs;
+  font-weight: v.$mhd-font-weight-regular;
+  color: c.$mhd-color-text-muted;
+}
+
+// A section of the panel that is not a table: the "add a member" control under
+// a member list, a note where a table would be. Same inset as a cell, so the
+// two line up down the left edge.
+.mhd-datatable-body {
+  padding: v.$mhd-datatable-cell-pad-x;
+}
+
+// ── The scrollport ───────────────────────────────────────────────────────────
+// A table that cannot fit is a table whose last columns simply are not there.
+// Letting it keep its width and scroll inside the panel is the one treatment
+// that never hides a column — squeezing the columns until they wrap costs every
+// row the height of its worst cell.
+//
+// This is the desktop answer only. Below the desktop step a table with controls
+// in its rows becomes cards instead, because a sideways scroll puts those
+// controls behind a gesture nobody makes. See the mixin at the foot of the file.
+
+//
+// `.mhd-table-responsive` was the older spelling, carried alongside this one
+// while the migration ran. The last table left the old skin, so it is gone.
+.mhd-datatable-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+// ── The table ────────────────────────────────────────────────────────────────
+
+.mhd-datatable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: v.$mhd-font-size-sm;
+  color: c.$mhd-color-text;
+
+  // ── A NOTE ON WEIGHT ───────────────────────────────────────────────────────
+  // The element selectors below are wrapped in `:where()`, which contributes
+  // nothing to specificity. That is deliberate and it is what makes the card
+  // treatment work at all.
+  //
+  // Written plainly, `.mhd-datatable tbody td` weighs a class and two elements.
+  // The mixin at the foot of this file has to undo those rules, and a module
+  // has to be able to place its own cells afterwards — so both would need to
+  // out-weigh a selector they did not write, and the winner would depend on how
+  // many classes the calling module happened to be scoped by. It did: the
+  // dashboard's workload card kept a divider under every line because its
+  // caller was one class shallower than the Departments one.
+  //
+  // With `:where()` these are the floor: the pattern's defaults, which anything
+  // more specific than nothing replaces. Every rule that follows — in the card
+  // mixin, in a module — simply wins, in source order, which is the argument
+  // that should decide it.
+  :where(th, td) {
+    padding: v.$mhd-datatable-cell-pad-y v.$mhd-datatable-cell-pad-x;
+    border: 0;
+    // Cells are middle-aligned, all of them. Three of the thirteen Bootstrap
+    // tables had reached for `.align-middle` by hand and the other ten had not,
+    // so a Pill and the text beside it sat on different lines depending on
+    // which screen you were looking at.
+    vertical-align: middle;
+  }
+
+  // `th` is the only one that needs saying — browsers centre it, and nothing
+  // here is centred. `td` is left alone: it is already left-aligned, and a rule
+  // here would be `.mhd-datatable td`, which outranks a single-class cell role
+  // and would quietly cancel every `.mhd-cell--numeric` in the product.
+  :where(th) {
+    text-align: left;
+  }
+
+  // ── Cell roles, in the table ───────────────────────────────────────────────
+  // Declared inside `.mhd-datatable` rather than on their own so they outrank
+  // the element rules above. A modifier that loses to the component it modifies
+  // is a modifier that does nothing — and it fails silently, which is worse:
+  // the class is right there in the markup saying the column is aligned when it
+  // is not.
+
+  // Figures line up on their digits and are read from the right. `tabular-nums`
+  // is why a column of workloads reads as a column rather than a ragged edge.
+  .mhd-cell--numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // A Pill sets its own height; the cell only stops it from being pulled apart
+  // by a neighbour that wraps.
+  .mhd-cell--status {
+    white-space: nowrap;
+  }
+
+  // The row's own controls. Right-aligned because the actions column is the
+  // last one, and an action that starts at the left edge of a wide, half-empty
+  // cell is a long way from the row it belongs to.
+  .mhd-cell--actions {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  // Column names are labels, not data: they recede so the figures below them
+  // carry the weight. The fill is what tells a wide, scrolling table where its
+  // header is — the softer surface tone rather than Bootstrap's `.thead-light`
+  // grey, which is heavy enough to read as a row of its own.
+  :where(thead th) {
+    height: v.$mhd-datatable-head-height;
+    background: c.$mhd-color-surface-muted;
+    border-bottom: 1px solid c.$mhd-color-border;
+    font-size: v.$mhd-font-size-xs;
+    font-weight: v.$mhd-font-weight-semibold;
+    color: c.$mhd-color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  // ── Rows ───────────────────────────────────────────────────────────────────
+  // `height` on a cell is a minimum, not a fixed value: a wrapped name grows
+  // its own row and leaves every other row alone.
+  :where(tbody th, tbody td) {
+    height: v.$mhd-datatable-row-height;
+    border-bottom: 1px solid c.$mhd-color-border;
+  }
+
+  // The last divider would sit against the panel's own edge, drawing the same
+  // line twice.
+  :where(tbody tr:last-child th, tbody tr:last-child td) {
+    border-bottom: 0;
+  }
+
+  // A row header names every other value in its row — that is what a `th` in a
+  // row is for, and it is what a screen reader repeats as it moves along them.
+  // It is not an emphasis, so it reads at the weight the cell beside it does.
+  :where(tbody th) {
+    font-weight: v.$mhd-font-weight-regular;
+  }
+
+  // Following one line across a seven-column row is the thing a wide table is
+  // worst at, and a tint under the pointer is the cheapest fix there is.
+  //
+  // `focus-within` rather than a focus ring on the row: the row is not
+  // focusable, its controls are, and they carry their own ring from
+  // components/_button.scss. This says which row that ring belongs to.
+  tbody tr:hover,
+  tbody tr:focus-within {
+    background: c.$mhd-color-row-hover;
+  }
+
+  // Deliberately after the hover: a selected row stays selected while the
+  // pointer moves off it.
+  tbody tr.is-selected {
+    background: c.$mhd-color-row-selected;
+  }
+}
+
+// ── Cell roles ───────────────────────────────────────────────────────────────
+// What a cell HOLDS, not what screen it is on. A status cell is a status cell
+// in Departments and in Agents.
+//
+// The three that fight the element rules — numeric, status and actions — are
+// declared inside `.mhd-datatable` above, where they can win. What follows is
+// what they need that no element rule contests.
+
+// A figure that carries a verdict as well as a value: an SLA breach count, a
+// number of tickets resolved within target. The colour is the point — but never
+// only the colour, because someone who cannot separate the hues, or who is
+// reading a washed-out screen in daylight, is left with nothing to go on. The
+// weight is the second, non-chromatic signal.
+//
+// Two roles and not five. A table that colours every column has stopped
+// signalling anything; these are for the value a reader is meant to stop at.
+.mhd-cell--attention {
+  color: c.$mhd-color-danger-strong;
+  font-weight: v.$mhd-font-weight-semibold;
+}
+
+.mhd-cell--positive {
+  color: c.$mhd-color-success;
+  font-weight: v.$mhd-font-weight-semibold;
+}
+
+// A cell holding something long and machine-shaped — a URL, a scope list, a
+// signature. It is there to be recognised, not read end to end, so it takes a
+// share of the row and truncates rather than setting the width of the whole
+// table. The full value stays available through the element's `title`.
+//
+// A max-width in ch rather than px: the unit is the width of a character in the
+// current font, which is what a truncated string is actually measured in.
+.mhd-cell--code {
+  max-width: 42ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+}
+
+// A variable-length list of Pills inside a cell: the departments an agent
+// belongs to, the teams, the scopes on a token. However many there are, they
+// wrap onto as many lines as they need and are spaced by the list rather than
+// by a margin on each pill.
+//
+// The margin is what this replaces. Every screen that listed pills in a cell
+// had hung a `.mr-1` off each one, which is a decision about the NEXT pill made
+// by the previous pill — so the last one carried a trailing margin nothing
+// needed, and the spacing changed as soon as the list wrapped.
+//
+// A WRAPPER INSIDE THE CELL, never the cell itself. `display: flex` on a `<td>`
+// takes that cell out of the table's own layout algorithm: the browser stops
+// treating it as a column member, and every column after it slides one place
+// along. That is not a subtle degradation — Departments ends up under Teams and
+// the workload figure appears under Status. The cell stays a cell; the list
+// inside it is what flexes.
+.mhd-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+}
+
+// The controls themselves sit in a flex row rather than carrying margins of
+// their own: a margin is a decision about the neighbour, and the neighbour
+// changes when a Pro action appears or a disabled one is swapped in.
+//
+// Addressed as "the children" rather than by the button's class on purpose —
+// what a button is sized like belongs to components/_button.scss and nowhere
+// else, which button_markup_test enforces.
+.mhd-action-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: v.$mhd-space-xs;
+
+  // A form wrapping a single POST button should not introduce a line box of
+  // its own between the flex row and the control.
+  form {
+    display: contents;
+  }
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────────
+// One empty state, inside the surface. The three the administration screens had
+// grown between them — a bare muted paragraph, a centred card body, and the
+// real component — meant a screen with nothing on it looked like a different
+// product depending on which screen it was.
+//
+// Inside the surface rather than instead of it: the panel is where the table
+// would have been, so the page does not change shape when the last row goes.
+
+.mhd-datatable-empty {
+  padding: v.$mhd-space-lg;
+}
+
+// ── Pagination ───────────────────────────────────────────────────────────────
+// Core's `paging_bar`, given a place to sit. Everything about how it looks
+// stays Bootstrap's — see vendors/_moodle-pagination.scss for why.
+//
+// No table in the product paginates yet; the slot exists so that the first one
+// that does gets it right rather than inventing a footer of its own.
+
+.mhd-datatable-pagination {
+  display: flex;
+  justify-content: center;
+  padding: v.$mhd-space-sm v.$mhd-datatable-cell-pad-x;
+  border-top: 1px solid c.$mhd-color-border;
+
+  // The paging bar ships with a bottom margin meant for a page it ends; here it
+  // is inside a panel that already provides the room.
+  .pagination {
+    margin-bottom: 0;
+  }
+}
+
+// ── Key/value tables ─────────────────────────────────────────────────────────
+// Not every table is a list. A licence panel, a detail summary, a diagnostic
+// readout — these are one subject described by a set of labelled facts, and
+// they are correctly written as a table with a row header per row and no
+// `thead` at all.
+//
+// They get a modifier rather than being forced into the list shape, because the
+// list shape would be a lie: there are no columns to name, no rows to compare,
+// nothing to sort. What they DO share is the surface, the radius, the cell
+// padding, the divider and the typography — which is the whole point. A reader
+// should recognise it as the same system without being told it is a list.
+//
+// And they need no card treatment: two columns already fit a phone. Below the
+// mobile step the pair simply stacks, label over value, which is what a narrow
+// column does to a definition list anyway.
+
+.mhd-datatable--keyvalue {
+  // The label column takes what it needs and no more; the value takes the rest.
+  th[scope='row'] {
+    width: 1%;
+    white-space: nowrap;
+    color: c.$mhd-color-text-muted;
+    font-weight: v.$mhd-font-weight-regular;
+  }
+}
+
+@media (max-width: 575px) {
+  .mhd-datatable--keyvalue {
+    // The table itself has to stop being a table, not just its cells. A `td`
+    // set to `display: block` still lives inside `display: table`, whose auto
+    // layout grows to fit its widest cell whatever the width says — so a key
+    // fingerprint with no break in it pushed the whole panel off the screen
+    // while `overflow-wrap` sat there having no effect. The wrapping works
+    // because this line stops the table sizing itself to its content.
+    display: block;
+
+    tbody,
+    tr {
+      display: block;
+    }
+
+    th[scope='row'],
+    td {
+      display: block;
+      width: auto;
+      height: auto;
+      white-space: normal;
+    }
+
+    // The label is the value's caption now, so it loses the divider that
+    // separated it as a cell and keeps only the one that ends the pair.
+    th[scope='row'] {
+      padding-bottom: 0;
+      border-bottom: 0;
+      font-size: v.$mhd-font-size-xs;
+    }
+
+    // A fingerprint, a bound URL, a client id: values with no natural break in
+    // them, on the narrowest screen there is. They wrap mid-token rather than
+    // running off the panel — there is no column here to protect.
+    //
+    // `code` is named as well as the cell, and it has to be. The theme sets
+    // `overflow-wrap: break-word` on `code` itself, which beats the `anywhere`
+    // the cell would otherwise pass down — and `break-word` does not enter the
+    // element's min-content width, so the token stayed on one line and the
+    // panel's `overflow: hidden` simply cut it off at the edge. Measured, not
+    // guessed: the computed value on the `code` was `break-word` while the cell
+    // above it read `anywhere`.
+    td,
+    td code {
+      overflow-wrap: anywhere;
+    }
+
+    td {
+      padding-top: 2px;
+    }
+  }
+}
+
+
+// =============================================================================
+// Table as cards
+// =============================================================================
+//
+// Below a given width a table stops being a grid of columns and becomes one
+// card per row.
+//
+// WHEN TO USE IT — the product-wide rule, and the reason it is one rule:
+//
+//   If the row contains CONTROLS, it becomes a card.
+//   If the row contains only DATA, it scrolls sideways.
+//
+// A control behind a horizontal scroll is a control nobody finds; a figure
+// behind one is a figure you go and look at when you want it. That single test
+// sorts every table in the product, which is the point — a reader should not
+// have to learn a different phone behaviour per screen.
+//
+// Emitted with no media query of its own, so the caller decides where the
+// switch happens: a three-column list can hold its shape further down than a
+// seven-column one.
+//
+// THE MARKUP HAS TO HOLD UP ITS END. Changing `display` on table elements costs
+// the table its implicit semantics, so each cell has to carry its own column
+// name: a `.mhd-cell-label` holding real text, which this reveals and which is
+// hidden wherever the header row is doing that job instead.
+//
+// Real text, for two reasons. A CSS `::before` is generated content and not
+// reliably announced, so the label would be there for sighted readers only. And
+// explicit ARIA roles — role="row", role="cell" — are what the HTML validator
+// rejects inside a table that still says role="table", so that route fails the
+// build. modules/_dashboard.scss takes the roles route and passes the linter
+// only because its example context renders no rows for the linter to look at;
+// that copy predates this and is on the migration list.
+//
+// AND THE CARD IS DESIGNED, NOT MERELY DERIVED. What this mixin gives is the
+// shell — surface, radius, spacing, the divider above the actions, the touch
+// target. Where each cell LANDS inside that shell is the calling module's
+// decision, because it is the only thing that knows which column matters most.
+
+// APPLIED TO THE SURFACE, not to the table. The panel's frame has to come off
+// at the same moment the rows grow frames of their own, and CSS cannot reach
+// upwards from the table to say so — one mixin on the outermost element is what
+// keeps the two halves of that decision from being written in two places and
+// drifting apart.
+// The mixin lives in _datatable-cards.scss, which emits nothing, so a stylesheet of
+// the add-on can include it without repeating this file.
+
+// The in-cell column name belongs to the card layout. Wherever the table is
+// still a table, the header row names the column and this would be a second
+// copy of it — read twice by a screen reader, drawn twice on screen. Hidden
+// with `display: none` rather than visually: it is genuinely redundant there,
+// not merely invisible.
+.mhd-cell-label {
+  display: none;
+}

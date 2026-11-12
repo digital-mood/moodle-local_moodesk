@@ -1,0 +1,100 @@
+// =============================================================================
+// components/_avatar.scss
+//
+// The user avatar — one frame, whatever core puts inside it.
+//
+// ── The problem this exists to solve ─────────────────────────────────────────
+//
+// `user_picture` returns one of TWO things. For a user who has uploaded a
+// photograph it returns an `<img class="userpicture">`. For one who has not it
+// returns — since Moodle 4.3 — a `<span class="userinitials size-N">` holding
+// their initials. Two different elements, in the same column, one row apart.
+//
+// Core styles those two very differently, and neither the way this product
+// needs:
+//
+//   `.userinitials` gets its box from a `size-N` class, and core ships rules
+//   for size-16, size-30, size-35, size-50, size-64 and size-100 ONLY. There
+//   is no size-36. Every call in this plugin asks for 36 — so the span arrived
+//   carrying a class that matches no rule, with no width and no height at all,
+//   and sized itself to the two letters inside it.
+//
+//   Both elements also carry `margin-right: 0.25rem` from core, which is core
+//   laying out an avatar inline beside a name. Inside a frame that centres its
+//   child, a right margin is not spacing: it is 4px of the child's own box, so
+//   the letters sit ~2px left of centre. That is the "initials are not centred"
+//   report, and it was never a text-alignment problem.
+//
+// The two symptoms had one cause. In the entity cell the frame is 36px and
+// clips, so a too-small span was merely off-centre; in the topbar the rule only
+// ever addressed `img`, so with no photograph there was nothing sized at all
+// and the avatar visibly shrank.
+//
+// ── The rule ─────────────────────────────────────────────────────────────────
+//
+// The FRAME is the authority on the size. Whatever core sends fills it exactly,
+// carries none of its own margin, and is centred by the frame. A user having or
+// not having a photograph cannot then change a dimension, a spacing or an
+// alignment anywhere in the product.
+//
+// Applied through a mixin rather than a class because the two callers reach it
+// differently: the entity cell names its own element, and the topbar wraps
+// markup core hands it whole. One declaration, two doors — the same argument
+// components/_entity-cell.scss makes for its card treatment.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use '../abstracts/colors'    as c;
+
+/// Frame a user avatar at an exact size.
+///
+/// @param {Length} $size - the frame's outer dimension. Defaults to the
+///   product's avatar token; the ticket list's meta chip passes its own,
+///   because there the avatar is a chip's leading icon rather than a portrait.
+@mixin mhd-avatar-frame($size: v.$mhd-entity-avatar) {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: $size;
+  height: $size;
+  border-radius: v.$mhd-radius-full;
+  overflow: hidden;
+
+  // Both of core's two shapes, addressed together: whichever one arrives fills
+  // the frame and brings no margin of its own into it.
+  img,
+  .userinitials {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border-radius: inherit;
+  }
+
+  img {
+    // A portrait that is not square is cropped to the circle rather than
+    // squashed into it.
+    object-fit: cover;
+  }
+
+  // Core's own centring assumes the box it sized; this box is ours, so the
+  // centring is restated on it. `line-height: 1` because a span inheriting the
+  // page's line-height centres its text box, not its glyphs, and two capitals
+  // then sit low in the circle.
+  .userinitials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    // Proportional to the frame, so one mixin serves a 36px portrait and an
+    // 18px chip icon without either guessing at the other's type size.
+    font-size: $size * 0.4;
+  }
+}
+
+// The default frame, for markup that wants the rule without a wrapper of its
+// own to hang it on.
+.mhd-avatar {
+  @include mhd-avatar-frame;
+  background: c.$mhd-color-surface-muted;
+}

@@ -1,0 +1,62 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/composer_send
+
+    The reply composer's send control.
+
+    An icon button, sitting to the right of the message box as one unit with it,
+    the way a messaging app puts it. There is no action bar under the composer
+    any more: with Cancel gone — the drawer's own close control is the way out of
+    a ticket, and a second one inside the conversation was duplicating it — the
+    only thing left to put there was this, and a whole strip for one button was
+    height the conversation could have had.
+
+    It is a real submit inside the moodleform, not a control that drives one.
+    The form is submitted the same way it always was: natively on the canonical
+    page, and intercepted by amd/src/reply_submit.js inside the drawer, which
+    listens on the form's own submit event. Nothing here knows about either.
+
+    Rendered into the form by \local_moodesk\form\reply_form, which owns the
+    label — the composer sends a public reply or an internal note depending on
+    which mode is selected, and amd/src/reply_toggle.js rewrites the label when
+    the mode changes. The two labels travel on the element so the toggle has
+    them without a second round trip for a string.
+
+    Context variables:
+      * label     - Accessible name for the current mode
+      * replylabel - Accessible name while the composer is on Public Reply
+      * notelabel - Accessible name while it is on Internal Note
+
+    Example context (json):
+    {
+      "label": "Send reply",
+      "replylabel": "Send reply",
+      "notelabel": "Add internal note"
+    }
+}}
+<button type="submit"
+        class="mhd-composer__send"
+        data-region="mhd-composer-send"
+        data-label-reply="{{replylabel}}"
+        data-label-note="{{notelabel}}"
+        title="{{label}}"
+        aria-label="{{label}}">
+    <svg class="mhd-composer__send-icon" aria-hidden="true" focusable="false">
+        <use href="#mhd-icon-send"></use>
+    </svg>
+</button>

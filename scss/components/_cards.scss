@@ -1,0 +1,22 @@
+// =============================================================================
+// components/_cards.scss
+// Base card shell used by ticket rows in mobile/tablet view.
+// On desktop, the same .mhd-ticket-row element renders as a horizontal flex row.
+// On mobile, CSS transforms it into a card via _ticket-list.scss breakpoints.
+// This file provides reusable card-shell utility for future modules.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+
+.mhd-card-shell {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: v.$mhd-radius-md;
+  box-shadow: v.$mhd-shadow-card;
+  transition: box-shadow v.$mhd-transition-fast, background-color v.$mhd-transition-fast;
+
+  &:hover,
+  &:focus-within {
+    box-shadow: v.$mhd-shadow-card-hover;
+  }
+}

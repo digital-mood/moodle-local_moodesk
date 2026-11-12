@@ -1,0 +1,21 @@
+// =============================================================================
+// modules/_agent-add.scss
+// Add agent — the candidate search results.
+//
+// The shortest table in the product: a person and the one button that makes
+// them an agent. It carries a control, so it becomes a card below 992px like
+// every other table that does.
+//
+// The card is the entity cell with a button under it, which is all this row has
+// ever been — there is no metadata to place, so this file adds nothing to the
+// pattern beyond the switch itself.
+// =============================================================================
+
+@use '../abstracts/breakpoints' as bp;
+@use '../components/datatable'  as dt;
+
+@include bp.mhd-respond-to('below-desktop') {
+  .mhd-admin-agent-add .mhd-datatable-surface {
+    @include dt.mhd-datatable-as-cards;
+  }
+}

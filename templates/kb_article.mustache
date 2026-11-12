@@ -1,0 +1,250 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/kb_article
+
+    Knowledge base — one article.
+
+    The breadcrumb says where the article sits; the header is its identity and,
+    for editors, its actions (built by kb_article_view, never here). Below, one
+    reading surface labelled by the page's own <h1>: a meta line saying where the
+    article is filed, who it is for and when it last moved — plus who moved it,
+    for editors — then the body inside `.mhd-prose`, then the way to a ticket.
+
+    Who is looking is decided in \local_moodesk\output\kb_article_view, once:
+    this template renders what it is given and asks no capability question.
+
+    `renderedbody` has been through format_text() — that is what the name
+    promises, and tests/kb_html_rendering_test.php holds every template to it.
+
+    Transitions are one POST each — action, sesskey — and split by what they
+    are. The workflow's next step (Publish on a draft, Restore on an archived
+    article) is the header's primary action; its form is hidden here and the
+    header's button submits it by id through the HTML `form` attribute. The
+    administrative ones (Unpublish, Archive, Delete) are a footer inside the
+    article, outlined, after the text. A form is rendered only when the
+    article's status and the user's capability allow that transition; there is
+    no disabled state to explain.
+
+    Context variables:
+      * breadcrumb     - breadcrumb partial context (Knowledge base › Category › title)
+      * pageheader     - page_header context (title; status meta and actions for editors)
+      * renderedbody   - The body, rendered by format_text()
+      * haspluginsections / pluginsections[] - {html} sections plugins add (hook kb_article_view_extend)
+      * plugintop[]    - {html} sections above the article (same hook)
+      * pluginfacts[]  - {label, html} facts in the meta line (same hook)
+      * hasbody        - False when the article has no text yet
+      * isdraft        - True for a draft (the empty-body hint says how to publish)
+      * iseditor       - Whether the viewer gets the editorial layers
+      * categoryname   - The category's name, or "General"
+      * categoryurl    - The landing filtered on that category
+      * audiencelabel  - "Everyone" / "Agents only"
+      * agentsonly     - True when the audience is agents
+      * timemodified   - Last edit, formatted
+      * haseditor      - True when the last editor is known (editors only)
+      * editorname     - Who last edited it (editors only)
+      * haspublished   - True when the article has ever been published (editors only)
+      * timepublished  - First publication, formatted (editors only)
+      * cta            - {show, url, text, button}: "Open a ticket"
+      * actionurl      - This page, the target of every transition form
+      * sesskey        - The session key
+      * canpublish, canunpublish, canarchive, canrestore, candelete
+                       - Which transition forms to render
+      * haslifecycle   - True when any of unpublish / archive / delete renders
+      * htmllang       - `lang` for the article surface when the row is not in the page's language, else ""
+
+    Example context (json):
+    {
+      "pageheader": {
+        "title": "How to reset your password",
+        "description": null,
+        "meta": "<span class=\"mhd-pill mhd-pill--success\">Published</span>",
+        "actions": [],
+        "primaryaction": {
+          "label": "Edit", "url": "/local/moodesk/kb_article_edit.php?id=7", "hasurl": true, "hasform": false,
+          "icon": "edit", "hasicon": true, "icononly": false, "variant": "filled", "attributes": [], "hasattributes": false
+        },
+        "hasactions": true
+      },
+      "breadcrumb": {"label": "Breadcrumb", "items": [
+        {"label": "Knowledge base", "url": "/local/moodesk/kb.php", "current": false},
+        {"label": "Access", "url": "/local/moodesk/kb.php?category=3", "current": false},
+        {"label": "How to reset your password", "url": null, "current": true}
+      ]},
+      "renderedbody": "<p>Click <strong>Forgot password</strong> on the login page.</p>",
+      "hasbody": true,
+      "isdraft": false,
+      "iseditor": true,
+      "categoryname": "Access",
+      "categoryurl": "/local/moodesk/kb.php?category=3",
+      "audiencelabel": "Everyone",
+      "agentsonly": false,
+      "timemodified": "12 Sep 2026, 10:42",
+      "haseditor": true,
+      "editorname": "Alba Agente",
+      "haspublished": true,
+      "timepublished": "10 Sep 2026, 09:00",
+      "cta": {"show": true, "url": "/local/moodesk/submit.php?categoryid=3", "text": "Didn't find what you needed?", "button": "Open a ticket"},
+      "actionurl": "/local/moodesk/kb_article.php?id=7",
+      "sesskey": "abc123",
+      "canpublish": false,
+      "canunpublish": true,
+      "canarchive": true,
+      "canrestore": false,
+      "candelete": true,
+      "haslifecycle": true,
+      "htmllang": ""
+    }
+}}
+<div class="mhd-kb-article">
+
+  {{#breadcrumb}}{{> local_moodesk/breadcrumb }}{{/breadcrumb}}
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  {{! Labelled by the page's own <h1> (page_header renders it with a fixed id),
+      so the article has a heading without the title being drawn twice. }}
+  {{! Plugin sections under the header (hook kb_article_view_extend). }}
+  {{#plugintop}}{{{html}}}{{/plugintop}}
+
+  <article class="mhd-kb-article__surface" aria-labelledby="mhd-page-title"{{#htmllang}} lang="{{htmllang}}"{{/htmllang}}>
+
+    {{! The facts about the article that are not its text. A reader gets where
+        it is filed, who it is for and when it changed; an editor also gets who
+        changed it and when it first went live. Absent, not blank. }}
+    <dl class="mhd-kb-article__meta">
+      <div class="mhd-kb-article__fact">
+        <dt>{{#str}} kb_col_category, local_moodesk {{/str}}</dt>
+        <dd><a href="{{categoryurl}}" class="mhd-kb-article__category">{{categoryname}}</a></dd>
+      </div>
+      {{#agentsonly}}
+      <div class="mhd-kb-article__fact">
+        <dt>{{#str}} kb_field_audience, local_moodesk {{/str}}</dt>
+        <dd><span class="mhd-pill mhd-pill--outline">{{audiencelabel}}</span></dd>
+      </div>
+      {{/agentsonly}}
+      <div class="mhd-kb-article__fact">
+        <dt>{{#str}} kb_col_updated, local_moodesk {{/str}}</dt>
+        <dd>{{timemodified}}{{#haseditor}} <span class="mhd-kb-article__by">{{#str}} kb_updated_by, local_moodesk, {{editorname}} {{/str}}</span>{{/haseditor}}</dd>
+      </div>
+      {{#haspublished}}
+      <div class="mhd-kb-article__fact">
+        <dt>{{#str}} kb_first_published, local_moodesk {{/str}}</dt>
+        <dd>{{timepublished}}</dd>
+      </div>
+      {{/haspublished}}
+      {{#pluginfacts}}
+      <div class="mhd-kb-article__fact">
+        <dt>{{label}}</dt>
+        <dd>{{{html}}}</dd>
+      </div>
+      {{/pluginfacts}}
+    </dl>
+
+    {{#hasbody}}
+    <div class="mhd-prose">{{{renderedbody}}}</div>
+    {{/hasbody}}
+    {{^hasbody}}
+    <p class="mhd-kb-article__empty text-muted">
+      {{#str}} kb_body_empty, local_moodesk {{/str}}
+      {{#isdraft}}{{#iseditor}}{{#str}} kb_body_empty_hint, local_moodesk {{/str}}{{/iseditor}}{{/isdraft}}
+    </p>
+    {{/hasbody}}
+
+    {{! "Was this article helpful?" (KB-07) — after the text, before the
+        way out, so the reader answers about what they just read. Absent,
+        not disabled, when there is nothing to ask. }}
+
+    {{! Sections plugins add (hook kb_article_view_extend). }}
+    {{#haspluginsections}}
+    {{#pluginsections}}{{{html}}}{{/pluginsections}}
+    {{/haspluginsections}}
+
+    {{! The way out when the answer was not here — filed under this article's
+        category when it is still one a ticket can be opened in. }}
+    {{#cta}}{{#show}}
+    <aside class="mhd-kb-article__cta">
+      <p class="mhd-kb-article__cta-text">{{text}}</p>
+      <a href="{{url}}" class="mhd-btn mhd-btn--outlined">{{button}}</a>
+    </aside>
+    {{/show}}{{/cta}}
+
+    {{! The administrative transitions — the ones that take an article off the
+        shelf or away for good. At the foot of the article rather than in the
+        header, and outlined: they are deliberate, occasional acts a manager
+        takes after reading, and nothing about them should out-rank Edit or
+        the workflow's next step, which is what the header holds. Rendered
+        only for a holder of :managekb — absent, not disabled, for anyone
+        else. Delete asks first, with the browser's own confirm, the same way
+        Webhooks and Automations do. }}
+    {{#haslifecycle}}
+    <footer class="mhd-kb-article__lifecycle">
+      <span class="mhd-kb-article__lifecycle-label">{{#str}} kb_lifecycle_heading, local_moodesk {{/str}}</span>
+      <div class="mhd-action-group">
+        {{#canunpublish}}
+        <form method="post" action="{{actionurl}}">
+          <input type="hidden" name="action"  value="unpublish">
+          <input type="hidden" name="sesskey" value="{{sesskey}}">
+          <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--small">{{#str}} kb_action_unpublish, local_moodesk {{/str}}</button>
+        </form>
+        {{/canunpublish}}
+        {{#canarchive}}
+        <form method="post" action="{{actionurl}}">
+          <input type="hidden" name="action"  value="archive">
+          <input type="hidden" name="sesskey" value="{{sesskey}}">
+          <button type="submit" class="mhd-btn mhd-btn--outlined mhd-btn--small">
+            <svg class="mhd-btn__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-archive"></use></svg>
+            {{#str}} kb_action_archive, local_moodesk {{/str}}
+          </button>
+        </form>
+        {{/canarchive}}
+        {{#candelete}}
+        <form method="post" action="{{actionurl}}"
+              onsubmit="return confirm('{{#str}} kb_delete_confirm, local_moodesk {{/str}}');">
+          <input type="hidden" name="action"  value="delete">
+          <input type="hidden" name="sesskey" value="{{sesskey}}">
+          <button type="submit" class="mhd-btn mhd-btn--outlined-danger mhd-btn--small">
+            <svg class="mhd-btn__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-trash"></use></svg>
+            {{#str}} kb_action_delete, local_moodesk {{/str}}
+          </button>
+        </form>
+        {{/candelete}}
+      </div>
+    </footer>
+    {{/haslifecycle}}
+
+  </article>
+
+  {{! The workflow's next step lives in the header as its primary action, and
+      the header only holds the button: the request it submits is spelled out
+      here, one hidden form with an id the button points at through the HTML
+      `form` attribute. Rendered only when the article's status and the user's
+      capability allow that transition. }}
+  {{#canpublish}}
+  <form id="mhd-kb-action-publish" method="post" action="{{actionurl}}">
+    <input type="hidden" name="action"  value="publish">
+    <input type="hidden" name="sesskey" value="{{sesskey}}">
+  </form>
+  {{/canpublish}}
+  {{#canrestore}}
+  <form id="mhd-kb-action-restore" method="post" action="{{actionurl}}">
+    <input type="hidden" name="action"  value="restore">
+    <input type="hidden" name="sesskey" value="{{sesskey}}">
+  </form>
+  {{/canrestore}}
+
+</div>

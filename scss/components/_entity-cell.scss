@@ -1,0 +1,150 @@
+// =============================================================================
+// components/_entity-cell.scss
+//
+// The Entity Cell — a thing the product manages, drawn as one object.
+//
+//   [ figure ]  Entity name
+//               Secondary information
+//
+// One component for every entity mooDesk lists: agents, departments, teams,
+// requesters, and whatever comes next. The point is not the avatar — it is that
+// the name of a thing and the one fact you need beside it occupy a known shape,
+// so a reader scanning a column of them scans one column, not two.
+//
+// ── The figure ───────────────────────────────────────────────────────────────
+// People get a photograph; everything else gets a mark.
+//
+//   .mhd-entity__avatar   wraps Moodle's own `user_picture` output. Core
+//                         renders `<img class="userpicture">` and that markup
+//                         is not ours to replace — this sizes and rounds
+//                         whatever core hands over.
+//   .mhd-entity__icon     a tinted disc with a glyph in it, for entities that
+//                         have no face. A department is not a person and a
+//                         placeholder portrait would say it was.
+//
+// Both are the same circle at the same size, so a table of agents and a table
+// of departments line their names up at the same left edge.
+//
+// The figure is DECORATIVE in both cases: the name is right beside it, and a
+// screen reader that announces the picture as well says everything twice. Mark
+// the glyph `aria-hidden` and pass `link => false` to `user_picture` — the row
+// owns its own navigation.
+//
+// ── When not to use it ───────────────────────────────────────────────────────
+// Where there is no entity. A webhook log line, a token scope, an SLA figure —
+// those are records and readings, not things with identities, and giving them a
+// portrait frame would be decoration standing in for meaning.
+//
+// Dimensions live in abstracts/_variables.scss, colour in abstracts/_colors.scss.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use 'avatar'                 as av;
+@use '../abstracts/colors'    as c;
+@use '../abstracts/mixins'    as m;
+@use 'entity-card'             as ecard;
+
+.mhd-entity {
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-entity-gap;
+  // Without this a long name refuses to shrink and pushes the cell — and with
+  // it the whole column — past the width the table has to give.
+  min-width: 0;
+}
+
+// The two figures share everything but their fill. The frame itself is
+// components/_avatar.scss's — the same one the topbar uses, so a face is the
+// same 36px circle in a table row and in the shell.
+.mhd-entity__avatar,
+.mhd-entity__icon {
+  @include av.mhd-avatar-frame;
+}
+
+// Only the fill is this file's now; the box, the image and the initials are the
+// avatar component's.
+//
+// WHAT THE PARAGRAPH HERE USED TO SAY, because it was wrong and the bug lived
+// inside it: that the initials span "arrives already sized by core's own
+// `size-36` class". Core ships no such class — its `.userinitials` rules cover
+// size-16, 30, 35, 50, 64 and 100, and every call in this plugin asks for 36.
+// The span therefore arrived with no dimensions and sized itself to its own two
+// letters, and core's `margin-right` pushed those letters off centre inside
+// this frame. Both are handled in components/_avatar.scss now.
+.mhd-entity__avatar {
+  background: c.$mhd-color-surface-muted;
+}
+
+// A mark rather than a portrait: the brand's soft tint, which is the same fill
+// the shell uses for an active navigation item, so the disc reads as part of
+// the product rather than as a status.
+.mhd-entity__icon {
+  background: c.$mhd-color-primary-soft;
+  color: c.$mhd-color-primary-strong;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.mhd-entity__body {
+  min-width: 0;
+}
+
+// The name, and anything that has to be read WITH it — an attention badge, an
+// edition marker. A row of its own rather than sitting inside the name, because
+// the name truncates: a badge nested in it is the first thing the ellipsis eats,
+// and an alert you cannot see is worse than no alert. Here the name gives up
+// the width and the badge keeps it.
+.mhd-entity__title {
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-xs;
+  min-width: 0;
+}
+
+.mhd-entity__badge {
+  flex: 0 0 auto;
+}
+
+// The name is what the row is about, so it is the one thing in the cell that
+// carries weight. Truncated rather than wrapped: in a table, a name that wraps
+// costs every other row in view the height of that one cell.
+.mhd-entity__name {
+  display: block;
+  font-weight: v.$mhd-font-weight-medium;
+  color: c.$mhd-color-text;
+  line-height: v.$mhd-line-height-tight;
+  @include m.mhd-truncate;
+}
+
+// One line, and only one: an email, a count, a role. Two lines of secondary
+// information is a card, not a cell.
+.mhd-entity__meta {
+  display: block;
+  margin-top: 2px;
+  font-size: v.$mhd-font-size-xs;
+  color: c.$mhd-color-text-muted;
+  line-height: v.$mhd-line-height-tight;
+  @include m.mhd-truncate;
+}
+
+// ── In a card ────────────────────────────────────────────────────────────────
+// A card has a width the cell never had, and the entity is its title: there is
+// room to read a long department name in full, and nothing to the right of it
+// that a second line would displace.
+//
+// A mixin as well as a class, because the two ways of reaching this state are
+// both real and neither may become a copy of the other. A module that turns its
+// table into cards at a breakpoint has no way to add a class inside a media
+// query, so it includes the mixin; markup that is a card at every width wears
+// the modifier. One declaration, two doors.
+//
+// This file still states no width and no breakpoint: where the switch happens
+// is the calling module's decision, because it is the only thing that knows how
+// many columns it has to fit.
+
+.mhd-entity--card {
+  @include ecard.mhd-entity-card;
+}

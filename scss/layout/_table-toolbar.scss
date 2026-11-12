@@ -1,0 +1,82 @@
+// =============================================================================
+// layout/_table-toolbar.scss
+//
+// The Table Toolbar — the band of controls that sits above a data table.
+//
+//   [ search ] [ filter ] [ filter ] [ Apply ]        [ table actions ]
+//
+// One row, one set of rules for how it wraps, one place it breaks. Wherever a
+// table has controls over it — filters on Agents, a period selector on
+// Supervision, export buttons on Reports — this is the band they sit in.
+//
+// ── What is NOT in here ──────────────────────────────────────────────────────
+// The controls. A search field is `.mhd-filter-search` and a dropdown is
+// `.mhd-filter-select`, both from layout/_filters.scss, and both were already
+// generic — nothing in either was ever ticket-specific, which is why Agents
+// could reuse them as-is. This file lays them out; it does not restyle them.
+//
+// The page's primary action, either. "New department" belongs beside the page
+// heading, where it is one commitment about the page, not one control among
+// six about the table. The `__actions` slot here is for actions ON THE TABLE —
+// export, and whatever column or bulk control comes later.
+//
+// ── One row, declared once ───────────────────────────────────────────────────
+// `.mhd-filter-bar` — the ticket list's own band, which carries saved views,
+// dismissible chips and a `<details>` fold that this one does not need — is the
+// same row at heart. It takes its geometry from the mixin below rather than
+// from a second copy of the same four properties, because two flex rows that
+// are meant to look identical and are spelled out twice do not stay identical.
+// =============================================================================
+
+@use '../abstracts/variables'   as v;
+@use '../abstracts/breakpoints' as bp;
+
+/// The geometry every toolbar row shares. Wraps rather than scrolls: a control
+/// pushed off the right edge of a filter bar is a control nobody applies.
+@mixin mhd-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+}
+
+.mhd-table-toolbar {
+  @include mhd-toolbar-row;
+
+  // The dropdown panels belonging to any control inside are positioned against
+  // this box.
+  position: relative;
+  margin-bottom: v.$mhd-space-md;
+}
+
+// The filters take the room that is going; the actions take what they need.
+// `1 1 320px` rather than `1 1 auto`: below that the row is not a toolbar any
+// more and the controls should be stacking, which the flex basis makes happen
+// on its own instead of at a breakpoint that has to be kept in sync.
+.mhd-table-toolbar__filters {
+  @include mhd-toolbar-row;
+
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+// Pushed to the far end of the band, away from the controls that narrow the
+// table, because they do something else entirely.
+.mhd-table-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: v.$mhd-space-sm;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+// ── Phones ───────────────────────────────────────────────────────────────────
+// A row of its own for the actions. They are not filters, and sharing the last
+// line with a half-width select is how they end up looking like one.
+
+@include bp.mhd-respond-to('mobile') {
+  .mhd-table-toolbar__actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}

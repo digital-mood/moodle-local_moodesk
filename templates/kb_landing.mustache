@@ -1,0 +1,222 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moodesk/kb_landing
+
+    Knowledge base — the reader's landing: search, browse by category, read.
+
+    A reading surface, not a table: the search box is the page's primary
+    control, the categories are a navigation beside the list (chips above it
+    below 992px), and each article is a card — title, excerpt, category, date.
+    Nothing here manages anything; that is Administration → Articles.
+
+    Three shapes of the list, decided by \local_moodesk\output\knowledge_page:
+    browse (a page of articles, all or one category), search (the best
+    matches, terms marked), or one of three empty states that mean different
+    things — nothing written yet, nothing in this category, nothing matches.
+
+    `titlehtml` and `excerpthtml` are HTML: escaped text with the search
+    terms wrapped in <mark> by kb_ui::highlight(), which escapes first.
+
+    Context variables:
+      * pageheader     - page_header context
+      * searchbox      - search_box partial context
+      * categorynav    - {label, all: {label,url,count,countsr,active}, items[...same], hasitems, dimmed}
+      * hasarticles    - False when the knowledge base has no visible article at all
+      * issearch       - True when showing search results
+      * heading        - The list's heading ("All articles", a category, "9 results for…")
+      * headingcount   - Number beside a browse heading, or null
+      * hasrows        - True when articles has entries
+      * articles[]     - {id, url, titlehtml, excerpthtml, hasexcerpt, hascategory, categoryname,
+                         updated, agentsonly, agentsonlylabel,
+                         langbadge: {code, name, htmllang} | null — set when the row is not in the reader's language}
+      * paginationbar  - Core paging bar (browse), or ""
+      * query          - The query (search)
+      * hasmore        - True when more than the shown results matched (search)
+      * morehint       - The "refine your search" sentence (search)
+      * clearurl       - The landing without parameters (search)
+      * emptynone / emptycategory / emptyresults - Which empty state, if any
+      * canedit        - Whether the viewer may write articles (the empty state offers to)
+      * newurl         - The create page
+      * landingurl     - kb.php
+      * cta            - {show, url, text, button}
+
+    Example context (json):
+    {
+      "pageheader": {"title": "Knowledge base", "description": "Answers to the questions your desk hears again and again.",
+                     "meta": null, "actions": [], "primaryaction": null, "hasactions": false},
+      "searchbox": {"action": "/local/moodesk/kb.php", "name": "q", "value": "", "label": "Search the knowledge base",
+                    "placeholder": "Search the knowledge base…", "buttonlabel": "Search", "hiddenfields": []},
+      "categorynav": {"label": "Categories", "dimmed": false, "hasitems": true,
+                      "all": {"label": "All articles", "url": "/local/moodesk/kb.php", "count": 3, "countsr": "3 articles", "active": true},
+                      "items": [{"label": "Access", "url": "/local/moodesk/kb.php?category=3", "count": 2, "countsr": "2 articles", "active": false},
+                                {"label": "No category", "url": "/local/moodesk/kb.php?category=none", "count": 1, "countsr": "1 articles", "active": false}]},
+      "hasarticles": true,
+      "issearch": false,
+      "heading": "All articles",
+      "headingcount": 3,
+      "hasrows": true,
+      "articles": [
+        {"id": 7, "url": "/local/moodesk/kb_article.php?id=7", "titlehtml": "How to reset your password",
+         "excerpthtml": "Click Forgot password on the login page and follow the link in the email…", "hasexcerpt": true,
+         "hascategory": true, "categoryname": "Access", "updated": "12 September 2026", "agentsonly": false, "agentsonlylabel": "Agents only",
+         "langbadge": {"code": "PT-BR", "name": "Português - Brasil", "htmllang": "pt"} }
+      ],
+      "paginationbar": "",
+      "emptynone": false, "emptycategory": false, "emptyresults": false,
+      "canedit": false,
+      "newurl": "/local/moodesk/kb_article_edit.php",
+      "landingurl": "/local/moodesk/kb.php",
+      "cta": {"show": true, "url": "/local/moodesk/submit.php", "text": "Can't find what you need?", "button": "Open a ticket"}
+    }
+}}
+<div class="mhd-knowledge">
+
+  {{#pageheader}}{{> local_moodesk/page_header }}{{/pageheader}}
+
+  <div class="mhd-knowledge__search">
+    {{#searchbox}}{{> local_moodesk/search_box }}{{/searchbox}}
+  </div>
+
+  {{#hasarticles}}
+  <div class="mhd-knowledge__body">
+
+    {{! Categories: a navigation, not a filter bar. Links, the active one marked,
+        counts read as "12 articles". Beside the list on a desk, a row of chips
+        above it on anything narrower. Dimmed while a search is showing: it
+        stays for orientation, it does not narrow the results. }}
+    {{#categorynav}}
+    <nav class="mhd-category-nav{{#dimmed}} mhd-category-nav--dimmed{{/dimmed}}" aria-label="{{label}}">
+      <ul class="mhd-category-nav__list">
+        {{#all}}
+        <li class="mhd-category-nav__item">
+          <a href="{{url}}" class="mhd-category-nav__link{{#active}} is-active{{/active}}" {{#active}}aria-current="page"{{/active}}>
+            <span class="mhd-category-nav__label">{{label}}</span>
+            <span class="mhd-category-nav__count" aria-hidden="true">{{count}}</span>
+            <span class="mhd-sr-only">{{countsr}}</span>
+          </a>
+        </li>
+        {{/all}}
+        {{#items}}
+        <li class="mhd-category-nav__item">
+          <a href="{{url}}" class="mhd-category-nav__link{{#active}} is-active{{/active}}" {{#active}}aria-current="page"{{/active}}>
+            <span class="mhd-category-nav__label">{{label}}</span>
+            <span class="mhd-category-nav__count" aria-hidden="true">{{count}}</span>
+            <span class="mhd-sr-only">{{countsr}}</span>
+          </a>
+        </li>
+        {{/items}}
+      </ul>
+    </nav>
+    {{/categorynav}}
+
+    <section class="mhd-knowledge__list" aria-labelledby="mhd-knowledge-heading">
+
+      {{! The list's heading is also the announcement of what the page did with
+          the request: it is the first heading after the search band. }}
+      <div class="mhd-knowledge__list-head">
+        <h2 class="mhd-knowledge__heading" id="mhd-knowledge-heading">
+          {{heading}}{{#headingcount}} <span class="mhd-knowledge__heading-count">{{headingcount}}</span>{{/headingcount}}
+        </h2>
+        {{#issearch}}
+        <a href="{{clearurl}}" class="mhd-btn mhd-btn--text mhd-btn--small">{{#str}} kb_search_clear, local_moodesk {{/str}}</a>
+        {{/issearch}}
+      </div>
+      {{#hasmore}}
+      <p class="mhd-knowledge__more text-muted">{{morehint}}</p>
+      {{/hasmore}}
+
+      {{#emptycategory}}
+      <div class="mhd-empty-state mhd-knowledge__empty">
+        <p class="mhd-empty-state-desc">{{#str}} kb_category_empty_desc, local_moodesk {{/str}}</p>
+        <a href="{{landingurl}}" class="mhd-btn mhd-btn--outlined">{{#str}} kb_see_all, local_moodesk {{/str}}</a>
+      </div>
+      {{/emptycategory}}
+
+      {{#emptyresults}}
+      <div class="mhd-empty-state mhd-knowledge__empty">
+        <p class="mhd-empty-state-desc">{{#str}} kb_search_none_desc, local_moodesk {{/str}}</p>
+        <div class="mhd-action-group">
+          <a href="{{clearurl}}" class="mhd-btn mhd-btn--outlined">{{#str}} kb_search_clear, local_moodesk {{/str}}</a>
+          {{#cta}}{{#show}}
+          <a href="{{url}}" class="mhd-btn mhd-btn--filled">{{button}}</a>
+          {{/show}}{{/cta}}
+        </div>
+      </div>
+      {{/emptyresults}}
+
+      {{#hasrows}}
+      <ul class="mhd-kb-list">
+        {{#articles}}
+        <li class="mhd-kb-card mhd-card-shell">
+          {{! The card is in the row's language: the `lang` attribute says so when
+              that is not the page's, and the badge in the meta line is the
+              visible exception marker — a card in the reader's own language
+              carries neither. }}
+          <article class="mhd-kb-card__body" aria-labelledby="mhd-kb-card-{{id}}"{{#langbadge}} lang="{{htmllang}}"{{/langbadge}}>
+            <h3 class="mhd-kb-card__title" id="mhd-kb-card-{{id}}">
+              <a href="{{url}}" class="mhd-kb-card__link">{{{titlehtml}}}</a>
+            </h3>
+            {{#hasexcerpt}}<p class="mhd-kb-card__excerpt">{{{excerpthtml}}}</p>{{/hasexcerpt}}
+            <p class="mhd-kb-card__meta">
+              {{#hascategory}}<span class="mhd-kb-card__category">{{categoryname}}</span>{{/hascategory}}
+              {{^hascategory}}<span class="mhd-kb-card__category">{{#str}} kb_category_none, local_moodesk {{/str}}</span>{{/hascategory}}
+              <span class="mhd-kb-card__date">{{#str}} kb_updated_on, local_moodesk, {{updated}} {{/str}}</span>
+              {{#agentsonly}}<span class="mhd-pill mhd-pill--outline">{{agentsonlylabel}}</span>{{/agentsonly}}
+              {{#langbadge}}{{> local_moodesk/kb_language_badge }}{{/langbadge}}
+            </p>
+          </article>
+        </li>
+        {{/articles}}
+      </ul>
+      {{/hasrows}}
+
+      {{#paginationbar}}
+      <div class="mhd-knowledge__pagination">{{{paginationbar}}}</div>
+      {{/paginationbar}}
+
+    </section>
+  </div>
+  {{/hasarticles}}
+
+  {{! Nothing has been published yet. The search box above stays — it is the
+      page's identity — and a writer is offered the pen. }}
+  {{#emptynone}}
+  <div class="mhd-empty-state mhd-knowledge__empty mhd-knowledge__empty--none">
+    <svg class="mhd-empty-state-icon" aria-hidden="true" focusable="false">
+      <use href="#mhd-icon-kb"></use>
+    </svg>
+    <p class="mhd-empty-state-title">{{#str}} kb_empty_reader_title, local_moodesk {{/str}}</p>
+    <p class="mhd-empty-state-desc">{{#str}} kb_empty_reader_desc, local_moodesk {{/str}}</p>
+    {{#canedit}}
+    <a href="{{newurl}}" class="mhd-btn mhd-btn--filled">
+      <svg class="mhd-btn__icon" aria-hidden="true" focusable="false"><use href="#mhd-icon-plus"></use></svg>
+      {{#str}} kb_new_heading, local_moodesk {{/str}}
+    </a>
+    {{/canedit}}
+  </div>
+  {{/emptynone}}
+
+  {{! The way out when the answer is not here. Quiet: it is the second choice. }}
+  {{#cta}}{{#show}}
+  <aside class="mhd-knowledge__cta">
+    <p class="mhd-knowledge__cta-text">{{text}}</p>
+    <a href="{{url}}" class="mhd-btn mhd-btn--outlined">{{button}}</a>
+  </aside>
+  {{/show}}{{/cta}}
+
+</div>

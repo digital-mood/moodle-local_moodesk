@@ -1,0 +1,244 @@
+// =============================================================================
+// components/_forms-controls.scss
+//
+// Scoped styling for Moodle forms (moodleform) rendered inside the application
+// shell. Upgrade-safe by design: it styles Moodle's own `.mform` / `.fitem`
+// markup rather than replacing it, so validation, CSRF and field types stay
+// intact (ADR §4 — "style moodleform scoped under .moodesk-app"). This is what
+// gives the showcase forms — submit ticket and reply — a product-native look in
+// F7 without the plugin owning the form markup.
+//
+// Everything is scoped under `.moodesk-app`, so legacy mode is untouched.
+// =============================================================================
+
+@use '../abstracts/variables' as v;
+@use 'moodleform' as mf;
+
+.moodesk-app {
+  .mform {
+    max-width: 760px;
+
+    fieldset {
+      margin: 0 0 var(--mhd-space-lg);
+      padding: var(--mhd-space-lg);
+      background: var(--mhd-color-surface);
+      border: 1px solid var(--mhd-color-border);
+      border-radius: var(--mhd-radius-lg);
+    }
+
+    // Drop the heavy default legend; the section reads as a card.
+    fieldset > legend {
+      font-size: var(--mhd-font-size-lg);
+      font-weight: var(--mhd-font-weight-semibold);
+      color: var(--mhd-color-text);
+    }
+
+    .fitem {
+      margin-bottom: var(--mhd-space-md);
+    }
+
+    label,
+    .col-form-label {
+      font-weight: var(--mhd-font-weight-medium);
+      color: var(--mhd-color-text);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="number"],
+    input[type="search"],
+    input[type="password"],
+    select,
+    textarea,
+    .form-control {
+      border: 1px solid var(--mhd-color-border-strong);
+      border-radius: var(--mhd-radius-md);
+      background: var(--mhd-color-surface);
+      color: var(--mhd-color-text);
+
+      &:focus {
+        border-color: var(--mhd-color-primary);
+        outline: 2px solid var(--mhd-color-focus);
+        outline-offset: 1px;
+      }
+    }
+  }
+
+  // Product-consistent primary action (brand colour) for shell forms/actions.
+  .btn.btn-primary {
+    background: var(--mhd-color-primary);
+    border-color: var(--mhd-color-primary);
+    color: var(--mhd-color-text-inverse);
+
+    &:hover,
+    &:focus {
+      background: var(--mhd-color-primary-strong);
+      border-color: var(--mhd-color-primary-strong);
+    }
+  }
+}
+
+// =============================================================================
+// Product form page — header + card wrapper for the showcase forms (submit /
+// reply). The page wraps Moodle's $form->render() output verbatim in a product
+// card; everything below RESTYLES Moodle's moodleform markup (no markup
+// replacement, validation/CSRF untouched) into a clean vertical SaaS layout.
+// Scoped under `.moodesk-app .moodesk-form-card`, so other forms are unaffected.
+// Selectors that touch Moodle internals (editor, filemanager, #fgroup_id_buttonar)
+// are best-effort across 4.5–5.2 and are validated in the lab QA.
+// =============================================================================
+
+.moodesk-app {
+
+  .moodesk-form-page {
+    max-width: 880px;
+  }
+
+  // The head of a form page — `__head` / `__title` / `__subtitle` — used to be
+  // declared here and built by hand with html_writer in submit.php. It is
+  // layout/_page-header.scss now, like every other screen's. What stays in this
+  // file is the form: the page's width, and the card the moodleform sits in.
+
+  // ── The card hosting the moodleform ─────────────────────────────────────────
+  .moodesk-form-card {
+    background: var(--mhd-color-surface);
+    border: 1px solid var(--mhd-color-border);
+    border-radius: var(--mhd-radius-lg);
+    box-shadow: var(--mhd-shadow-card);
+    overflow: hidden;
+
+    // The card is the frame now — neutralise Moodle's fieldset chrome. The
+    // card carries the form's padding so the action bar below can bleed back
+    // out to the card's own edges.
+    @include mf.mhd-moodleform-reset(var(--mhd-space-lg));
+
+    // ── Vertical layout: label on top, control full width ──
+    // The shared reset. This screen used to carry a copy of it that had fallen
+    // two rules behind the drawer's: the grid gutter was never zeroed, so every
+    // control sat 12px past its own label, and the required marker was free to
+    // drift to the far edge of a full-width label cell. Both are fixed by
+    // adopting the complete one. See components/_moodleform.scss.
+    @include mf.mhd-moodleform-stacked(inherit);
+
+    .mform input[type="text"],
+    .mform input[type="email"],
+    .mform input[type="url"],
+    .mform input[type="number"],
+    .mform select,
+    .mform textarea,
+    .mform .form-control {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    // Custom-field section header → quiet divider subheading.
+    .mform .fheader {
+      margin: var(--mhd-space-md) 0 var(--mhd-space-sm);
+      padding-top: var(--mhd-space-md);
+      border-top: 1px solid var(--mhd-color-border);
+      font-size: var(--mhd-font-size-md);
+      font-weight: var(--mhd-font-weight-semibold);
+      color: var(--mhd-color-text);
+    }
+
+    // ── A section header → a quiet divider subheading ──
+    // moodleform opens a new `<fieldset>` at every `header` element. The first
+    // one a form emits carries no header at all (`<fieldset class="hidden">`,
+    // lib/formslib.php) and needs no rule; the ones that follow are a section
+    // break and read as one. Same treatment the drawer gives them, so a form
+    // with sections looks the same on a page as it does in a panel.
+    .mform > fieldset.collapsible {
+      margin-top: var(--mhd-space-md);
+      padding-top: var(--mhd-space-md);
+      border-top: 1px solid var(--mhd-color-border);
+    }
+
+    .mform > fieldset h3 {
+      font-size: var(--mhd-font-size-md);
+      font-weight: var(--mhd-font-weight-semibold);
+      color: var(--mhd-color-text);
+    }
+
+    // ── A run of fields laid out in columns ─────────────────────────────────
+    // Opt-in, by wrapping the run in `.mhd-field-grid`. The number of columns
+    // is decided by the width of the CARD, not of the window — see the mixin.
+    //
+    // Note this is not `.row`: a Bootstrap row inside a card whose children are
+    // themselves Bootstrap rows (every `.fitem` is one) nests two grids and
+    // adds negative margins to a box that has no gutter to cancel.
+    .mhd-field-grid {
+      @include mf.mhd-moodleform-field-grid(v.$mhd-form-field-min);
+    }
+
+    // A run whose values are a handful of characters each. The control stops
+    // stretching to its column; the label above it still has the whole column
+    // to wrap in, which is the point — the field is narrow, the label is not.
+    .mhd-field-grid--compact .fitem input[type="text"],
+    .mhd-field-grid--compact .fitem input[type="number"] {
+      max-width: v.$mhd-form-control-narrow;
+    }
+
+    // ── Description editor: integrated + rounded ──
+    [data-fieldtype="editor"] .editor_atto_wrap,
+    [data-fieldtype="editor"] .tox-tinymce {
+      border: 1px solid var(--mhd-color-border-strong);
+      border-radius: var(--mhd-radius-md);
+      overflow: hidden;
+    }
+
+    [data-fieldtype="editor"] .editor_atto_toolbar {
+      background: var(--mhd-color-surface-muted);
+      border-bottom: 1px solid var(--mhd-color-border);
+    }
+
+    [data-fieldtype="editor"] .editor_atto_content {
+      min-height: 180px;
+    }
+
+    // ── Attachments: tidy dropzone look ──
+    [data-fieldtype="filemanager"] .filemanager {
+      border: 1px dashed var(--mhd-color-border-strong);
+      border-radius: var(--mhd-radius-md);
+      background: var(--mhd-color-surface-muted);
+    }
+
+    // ── Action buttons → a clear card footer ──
+    // Full-bleed to the card edges (the .mform padding is the only horizontal
+    // padding between here and the card border).
+    #fgroup_id_buttonar {
+      margin: var(--mhd-space-lg) calc(-1 * var(--mhd-space-lg)) calc(-1 * var(--mhd-space-lg));
+      padding: var(--mhd-space-md) var(--mhd-space-lg);
+      background: var(--mhd-color-surface-muted);
+      border-top: 1px solid var(--mhd-color-border);
+    }
+
+    #fgroup_id_buttonar > .col-form-label {
+      display: none;
+    }
+
+    #fgroup_id_buttonar > .felement,
+    #fgroup_id_buttonar > [class*="col-md-9"] {
+      flex: 0 0 100%;
+      max-width: 100%;
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--mhd-space-sm);
+      margin: 0;
+    }
+
+    // Cancel reads as a quiet secondary next to the brand primary.
+    #fgroup_id_buttonar .btn-secondary {
+      background: transparent;
+      border-color: var(--mhd-color-border-strong);
+      color: var(--mhd-color-text);
+
+      &:hover,
+      &:focus {
+        background: var(--mhd-color-surface);
+        border-color: var(--mhd-color-text-muted);
+      }
+    }
+  }
+}
