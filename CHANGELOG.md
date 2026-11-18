@@ -16,6 +16,23 @@ Nothing yet.
 
 ---
 
+## [3.0.4] — 2026-11-18
+
+One language string, released together with `local_moodeskpro` 3.0.4. No screen, setting, schema
+or behaviour change. `local_moodeskpro` 3.0.4 still works with `local_moodesk` 3.0.3.
+
+### Fixed
+
+- The cache definition *Dashboard metrics* had no name string, so the cache administration page
+  showed a placeholder.
+
+### Upgrade notes
+
+- Version 2026111800. The upgrade only records the new version: no table, field or setting
+  changes.
+
+---
+
 ## [3.0.3] — 2026-11-11
 
 Packaging only, before the Moodle Marketplace submission. No functional, schema, setting or

@@ -113,6 +113,7 @@ $string['bulk_select_all_short'] = 'Select all';
 $string['bulk_select_ticket'] = 'Select ticket #{$a}';
 $string['bulk_success'] = '{$a} ticket(s) updated successfully.';
 $string['bulk_too_many'] = 'A bulk action can change at most {$a} tickets at once. Nothing was changed.';
+$string['cachedef_dashboard_metrics'] = 'Dashboard metrics';
 $string['cat_activate'] = 'Activate';
 $string['cat_admin_heading'] = 'Categories';
 $string['cat_archive'] = 'Archive';
