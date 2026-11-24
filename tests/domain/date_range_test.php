@@ -24,7 +24,6 @@
 
 namespace local_moodesk\domain;
 
-
 /**
  * Tests for date_range: the 7/30/90/custom contract Reports had before the
  * parser was extracted (KB-07, D14), pinned so the extraction and every

@@ -137,7 +137,7 @@ const request = async(session, action, extra = {}) => {
         const data = await response.json();
 
         if (!data.success) {
-            throw new Error(data.error || 'draft request failed');
+            throw new Error(data.error || '');
         }
 
         return data.files || [];

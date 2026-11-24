@@ -38,6 +38,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+import Pending from 'core/pending';
+import {setUserPreference} from 'core_user/repository';
 import {upToTabletQuery} from 'local_moodesk/breakpoints';
 import {lock, unlock} from 'local_moodesk/scroll_lock';
 
@@ -70,20 +72,28 @@ const isDrawerWidth = () => {
 /**
  * Persist the collapsed state as a user preference (best-effort).
  *
- * Uses the always-present core utility so it is stable across Moodle 4.5–5.2.
+ * Goes through core_user/repository, the API core itself uses since 4.3: it is
+ * present on every supported release from 4.5 on. M.util.set_user_preference()
+ * was removed in Moodle 5.2, so it cannot be used here.
  * Failure is swallowed: the toggle still works, only persistence is lost.
+ * The pending marker lets Behat wait for the save before reloading the page.
  *
  * @param {string} prefName  Declared preference name.
  * @param {boolean} collapsed Current collapsed state.
  */
 const persist = (prefName, collapsed) => {
+    const pending = new Pending('local_moodesk/app_shell:persist');
+    let saving;
     try {
-        if (window.M && window.M.util && typeof window.M.util.set_user_preference === 'function') {
-            window.M.util.set_user_preference(prefName, collapsed ? '1' : '0');
-        }
+        saving = setUserPreference(prefName, collapsed ? '1' : '0');
     } catch (e) {
-        // Best-effort only.
+        saving = Promise.reject(e);
     }
+    saving
+        .catch(() => {
+            // Best-effort only.
+        })
+        .then(() => pending.resolve());
 };
 
 /**

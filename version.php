@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_moodesk';
-$plugin->version   = 2026111800;         // YYYYMMDDXX — bump on every release.
+$plugin->version   = 2026112400;         // YYYYMMDDXX — bump on every release.
 $plugin->requires  = 2024100700;         // Moodle 4.5 LTS minimum (2024-10-07); 4.1–4.4 are EOL.
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->supported = [405, 502];        // Moodle 4.5 LTS to 5.2, the range CI tests.
-$plugin->release   = '3.0.4';            // The missing Dashboard metrics cache name string; see CHANGELOG.
+$plugin->release   = '3.0.5';            // Marketplace review fixes and the sidebar state on 5.2; see CHANGELOG.

@@ -123,7 +123,7 @@ const send = async(form, editor) => {
         const data = await response.json();
         answered = true;
         if (!data.success) {
-            throw new Error(data.error || 'Request failed');
+            throw new Error(data.error || '');
         }
 
         // The send is over before anything else happens: the reply is on the

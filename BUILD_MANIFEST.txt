@@ -1,5 +1,5 @@
 local_moodesk build manifest
-release: 3.0.4
-git_sha: dfe26ac
-built_at: 2026-11-18T11:37:19Z
-built_by: runner@runnervmy75tu
+release: 3.0.5
+git_sha: 634ce14
+built_at: 2026-11-24T16:33:57Z
+built_by: runner@runnervmxfy6o

@@ -48,6 +48,12 @@ use local_moodesk\domain\ticket;
  * Stateless SLA evaluation service.
  */
 class sla_service {
+    /**
+     * Statuses the SLA no longer applies to: get_status() answers 'ok' for them
+     * without looking at any deadline.
+     */
+    public const TERMINAL_STATUSES = [ticket::STATUS_RESOLVED, ticket::STATUS_CLOSED];
+
     /** Warning window as a fraction of the total SLA threshold. */
     private const WARNING_FRACTION = 0.20;
 
@@ -147,9 +153,8 @@ class sla_service {
 
         // Terminal statuses — SLA no longer applies.
         // STATUS_INPROGRESS = 6 > STATUS_RESOLVED = 4, so ">=" is wrong here.
-        // Check explicitly against the two terminal values.
-        $status = (int) $ticket->status;
-        if ($status === ticket::STATUS_RESOLVED || $status === ticket::STATUS_CLOSED) {
+        // Check explicitly against the terminal values.
+        if (in_array((int) $ticket->status, self::TERMINAL_STATUSES, true)) {
             return 'ok';
         }
 
@@ -160,6 +165,26 @@ class sla_service {
         $resolvestatus  = $this->check_resolve($ticket, $thresholds['resolve'], $now);
 
         return $this->worst_status($responsestatus, $resolvestatus);
+    }
+
+    /**
+     * The statuses whose tickets the SLA is evaluated for: every status but the
+     * terminal ones. A caller looking for tickets in warning or breach can ask
+     * the database for these first instead of evaluating closed history.
+     *
+     * @return int[]
+     */
+    public static function evaluated_statuses(): array {
+        $all = [
+            ticket::STATUS_NEW,
+            ticket::STATUS_OPEN,
+            ticket::STATUS_PENDING,
+            ticket::STATUS_ON_HOLD,
+            ticket::STATUS_RESOLVED,
+            ticket::STATUS_CLOSED,
+            ticket::STATUS_INPROGRESS,
+        ];
+        return array_values(array_diff($all, self::TERMINAL_STATUSES));
     }
 
     /**

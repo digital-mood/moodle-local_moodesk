@@ -45,6 +45,12 @@ final class ticket_list_results {
     /** @var string The template this class renders, and the partial index.php includes. */
     public const TEMPLATE = 'local_moodesk/ticket_list_results';
 
+    /** @var int Rows read per query while the "warning only" filter walks a view. */
+    public const WARNING_CHUNK = 500;
+
+    /** @var int|null A smaller block for tests, so a walk spans several without hundreds of rows. */
+    private static ?int $warningchunkfortesting = null;
+
     /** @var ticket_list_query What is being asked for. */
     private ticket_list_query $query;
 
@@ -99,33 +105,30 @@ final class ticket_list_results {
         $filters = $query->to_filters();
         $slaservice = $isagent ? new sla_service() : null;
 
-        if ($isagent) {
-            $result = $service->get_all_tickets($userid, $filters, $query->get_page(), $query->get_view());
-        } else {
-            $result = $service->get_tickets_for_requester($userid, $filters, $query->get_page());
-        }
+        // One instant for every SLA evaluation of this request, so a ticket cannot
+        // change state between being filtered and being drawn.
+        $now = time();
 
-        $tickets = $result['tickets'];
-        $total = $result['total'];
-
-        // PRO-2: warning filter — re-fetch all tickets for the current view (no
-        // DB-level filter for warning; computed in real-time), then slice for
-        // pagination.
         if ($isagent && $query->get_sla() === 2) {
-            $allresult = $service->get_all_tickets($userid, $filters, 0, $query->get_view());
-            self::prime_sla_departments($slaservice, $allresult['tickets']);
-            $warningtickets = array_values(array_filter(
-                $allresult['tickets'],
-                static function ($t) use ($slaservice): bool {
-                    return $slaservice->get_status($t) === 'warning';
-                }
-            ));
-            $total = count($warningtickets);
-            $tickets = array_slice(
-                $warningtickets,
-                $query->get_page() * ticket_service::PAGE_SIZE,
-                ticket_service::PAGE_SIZE
+            // The warning filter has no column in the database: it is computed
+            // from the deadlines. The whole view is walked, not one page of it.
+            [$tickets, $total] = self::warning_page(
+                $service,
+                $slaservice,
+                $userid,
+                $filters,
+                $query->get_view(),
+                $query->get_page(),
+                $now
             );
+        } else {
+            if ($isagent) {
+                $result = $service->get_all_tickets($userid, $filters, $query->get_page(), $query->get_view());
+            } else {
+                $result = $service->get_tickets_for_requester($userid, $filters, $query->get_page());
+            }
+            $tickets = $result['tickets'];
+            $total = $result['total'];
         }
 
         // The SLA evaluation below resolves each ticket's department for its
@@ -185,8 +188,8 @@ final class ticket_list_results {
             }
 
             // SLA status (agents only — compute real-time, not stored flag).
-            $slastatus = ($slaservice !== null) ? $slaservice->get_status($t) : 'none';
-            $slatimelabel = ($slaservice !== null) ? $slaservice->get_time_label($t) : '';
+            $slastatus = ($slaservice !== null) ? $slaservice->get_status($t, $now) : 'none';
+            $slatimelabel = ($slaservice !== null) ? $slaservice->get_time_label($t, $now) : '';
 
             // PRO-2: urgency score for sort-by-SLA (breach > warning > rest).
             $slaurgencyscore = match ($slastatus) {
@@ -228,6 +231,83 @@ final class ticket_list_results {
         }
 
         return new self($query, $userid, $canbulk, $rows, $total);
+    }
+
+    /**
+     * One page of the tickets in SLA warning, and how many there are in the view.
+     *
+     * The view is read in blocks of WARNING_CHUNK rows through the same service
+     * call the list uses, so access, view and filters are the list's own. Only
+     * statuses the SLA is evaluated for are asked for (intersected with the
+     * user's status filter): resolved and closed tickets are never in warning.
+     * Every block is evaluated against one $now; only the rows that fall on the
+     * requested page are kept, so memory does not grow with the view. The list
+     * order has a tiebreaker on id, which is what keeps a row from appearing in
+     * two blocks or in none.
+     *
+     * @param ticket_service $service
+     * @param sla_service    $slaservice
+     * @param int            $userid
+     * @param array          $filters
+     * @param string         $view
+     * @param int            $page
+     * @param int            $now
+     * @return array{0: \stdClass[], 1: int} The page's tickets and the total.
+     */
+    private static function warning_page(
+        ticket_service $service,
+        sla_service $slaservice,
+        int $userid,
+        array $filters,
+        string $view,
+        int $page,
+        int $now
+    ): array {
+        $statuses = sla_service::evaluated_statuses();
+        if (!empty($filters['status'])) {
+            $statuses = array_values(array_intersect($statuses, array_map('intval', (array) $filters['status'])));
+            if (empty($statuses)) {
+                return [[], 0];
+            }
+        }
+        $filters['status'] = $statuses;
+
+        $from = $page * ticket_service::PAGE_SIZE;
+        $to = $from + ticket_service::PAGE_SIZE;
+        $found = 0;
+        $tickets = [];
+
+        $chunk = self::$warningchunkfortesting ?? self::WARNING_CHUNK;
+        for ($offset = 0;; $offset += $chunk) {
+            $block = $service->get_all_tickets_range($userid, $filters, $offset, $chunk, $view)['tickets'];
+            self::prime_sla_departments($slaservice, $block);
+            foreach ($block as $t) {
+                if ($slaservice->get_status($t, $now) !== 'warning') {
+                    continue;
+                }
+                if ($found >= $from && $found < $to) {
+                    $tickets[] = $t;
+                }
+                $found++;
+            }
+            if (count($block) < $chunk) {
+                break;
+            }
+        }
+
+        return [$tickets, $found];
+    }
+
+    /**
+     * Use a smaller block for the "warning only" walk. Tests only.
+     *
+     * @param int|null $chunk Rows per block, or null for WARNING_CHUNK.
+     */
+    public static function set_warning_chunk_for_testing(?int $chunk): void {
+        if (!PHPUNIT_TEST) {
+            throw new \coding_exception('set_warning_chunk_for_testing() is for PHPUnit only.');
+        }
+        self::$warningchunkfortesting = $chunk;
     }
 
     /**

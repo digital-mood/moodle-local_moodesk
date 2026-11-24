@@ -122,7 +122,7 @@ Feature: A ticket is worked on without leaving the queue
     # The browser's rule passed, the request went out, the server said no. That
     # is the toast's job, and the reply is still in the box to be sent again.
     Then ".mhd-toast--error" "css_element" should exist
-    And I should see "Invalid session key"
+    And I should see "Your session has most likely timed out"
     And the field "Reply" matches value "This one the server will refuse."
     And ".mhd-detail-drawer" "css_element" should be visible
     And the mooDesk page should not have been reloaded

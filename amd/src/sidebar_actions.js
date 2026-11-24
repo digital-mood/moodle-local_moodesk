@@ -185,7 +185,7 @@ const save = async(form) => {
         const data = await response.json();
         answered = true;
         if (!data.success) {
-            throw new Error(data.error || 'Request failed');
+            throw new Error(data.error || '');
         }
 
         applyResponse(root, data);
@@ -281,7 +281,7 @@ const submitForm = async(form) => {
         const data = await response.json();
         answered = true;
         if (!data.success) {
-            throw new Error(data.error || 'Request failed');
+            throw new Error(data.error || '');
         }
 
         setSubmitting(false);

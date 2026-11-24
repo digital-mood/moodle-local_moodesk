@@ -85,6 +85,56 @@ final class ajax_error_test extends \advanced_testcase {
     }
 
     /**
+     * Each reason ajax.php turns a request away for, and the string it is shown as.
+     *
+     * @return array<string, array{string, string, string}>
+     */
+    public static function refusal_provider(): array {
+        return [
+            'not a POST' => [ajax_error::REFUSED_POST_REQUIRED, 'ajax_post_required', 'local_moodesk'],
+            'expired session' => [ajax_error::REFUSED_SESSKEY, 'invalidsesskey', 'error'],
+            'no permission' => [ajax_error::REFUSED_PERMISSION, 'ajax_permission_denied', 'local_moodesk'],
+            'saved view not JSON' => [ajax_error::REFUSED_INVALID_JSON, 'ajax_invalid_json', 'local_moodesk'],
+            'unknown action' => [ajax_error::REFUSED_UNKNOWN_ACTION, 'ajax_unknown_action', 'local_moodesk'],
+        ];
+    }
+
+    /**
+     * A refusal is a failure whose message is a language string, never a literal.
+     *
+     * @dataProvider refusal_provider
+     * @param string $reason
+     * @param string $identifier
+     * @param string $component
+     */
+    public function test_a_refusal_is_a_localised_failure(string $reason, string $identifier, string $component): void {
+        $this->assertTrue(get_string_manager()->string_exists($identifier, $component));
+
+        $payload = ajax_error::refused($reason);
+
+        $this->assertSame(['success' => false, 'error' => get_string($identifier, $component)], $payload);
+    }
+
+    /**
+     * A reason that is not one of the constants is a programming error.
+     */
+    public function test_an_unknown_reason_is_a_coding_error(): void {
+        $this->expectException(\coding_exception::class);
+        ajax_error::refused('Permission denied');
+    }
+
+    /**
+     * The Marketplace review found fixed English text in ajax.php: every answer
+     * it writes goes through refused(), payload() or get_string().
+     */
+    public function test_ajax_php_holds_no_literal_error(): void {
+        $source = file_get_contents(__DIR__ . '/../../ajax.php');
+
+        $this->assertDoesNotMatchRegularExpression('/[\'"]error[\'"]\s*=>\s*[\'"]/', $source);
+        $this->assertSame(12, substr_count($source, 'ajax_error::refused(ajax_error::REFUSED_'));
+    }
+
+    /**
      * The action name is sanitised into the incident code, never trusted.
      */
     public function test_the_action_is_sanitised_in_the_code(): void {

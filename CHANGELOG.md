@@ -16,6 +16,44 @@ Nothing yet.
 
 ---
 
+## [3.0.5] — 2026-11-24
+
+Fixes for three findings of the Moodle Marketplace review of 3.0.4, and for the sidebar state on
+Moodle 5.2, released together with `local_moodeskpro` 3.0.5. No schema, setting or upgrade step
+changes.
+
+### Removed
+
+- `cli/seed_smoke_data.php` is no longer part of the package. It created demonstration data for
+  test sites and was not a feature of the product. It declared global functions without the
+  plugin's prefix.
+
+### Fixed
+
+- The errors the ticket panel and the saved views can receive from the server (no permission,
+  expired session, unknown action, a request that is not a POST, a saved view that cannot be
+  read) were fixed English text. They are now language strings, and the expired session uses
+  Moodle's own message. When the server gives no message, the error toast shows its translated
+  text instead of an English fallback.
+- The *SLA warning only* filter of the ticket list now finds every ticket in warning in the view,
+  with the right total and pagination. It used to look only at the first 30 tickets of the view,
+  so later tickets never appeared and page 2 was empty.
+- Tickets created in the same second keep a stable order between pages of the ticket list, so
+  none is repeated or skipped from one page to the next.
+- On Moodle 5.2 the collapsed state of the mooDesk sidebar was not saved, so the sidebar opened
+  again on every page. The shell used `M.util.set_user_preference()`, which Moodle 5.2 removed;
+  it now saves the preference through `core_user/repository`, available on every supported
+  release from 4.5 on.
+
+### Upgrade notes
+
+- Upgrading from the ZIP replaces the plugin directory, so `cli/` disappears from the site.
+  Nothing else depends on it.
+- Version 2026112400. The upgrade only records the new version: no table, field or setting
+  changes.
+
+---
+
 ## [3.0.4] — 2026-11-18
 
 One language string, released together with `local_moodeskpro` 3.0.4. No screen, setting, schema

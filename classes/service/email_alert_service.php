@@ -24,7 +24,6 @@
 
 namespace local_moodesk\service;
 
-
 /**
  * Sends operator-facing alerts via the Moodle message API, so recipients keep
  * control over delivery channels through their notification preferences. The

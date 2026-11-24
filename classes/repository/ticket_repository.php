@@ -146,7 +146,7 @@ class ticket_repository {
         $params['uid'] = $userid;
 
         $sql = $this->base_select()
-             . " WHERE t.userid = :uid AND {$where} ORDER BY t.timecreated DESC";
+             . " WHERE t.userid = :uid AND {$where} ORDER BY t.timecreated DESC, t.id DESC";
 
         return array_values($this->db->get_records_sql($sql, $params, $limitfrom, $limitnum));
     }
@@ -191,7 +191,7 @@ class ticket_repository {
         [$where, $params] = $this->build_filters_sql($filters);
 
         $sql = $this->base_select()
-             . " WHERE {$where} ORDER BY t.timecreated DESC";
+             . " WHERE {$where} ORDER BY t.timecreated DESC, t.id DESC";
 
         return array_values($this->db->get_records_sql($sql, $params, $limitfrom, $limitnum));
     }
@@ -249,7 +249,7 @@ class ticket_repository {
                                AND dm2.userid = :unagtid
                         ))
                    AND {$filterwhere}
-              ORDER BY t.timecreated DESC";
+              ORDER BY t.timecreated DESC, t.id DESC";
 
         $params = array_merge($filterparams, ['unagtid' => $agentid]);
 
@@ -310,7 +310,7 @@ class ticket_repository {
                           AND dm3.userid = :deptagtid
                    )
                    AND {$filterwhere}
-              ORDER BY t.timecreated DESC";
+              ORDER BY t.timecreated DESC, t.id DESC";
 
         $params = array_merge($filterparams, ['deptagtid' => $agentid]);
 

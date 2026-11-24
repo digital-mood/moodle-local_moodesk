@@ -55,13 +55,13 @@ header('Content-Type: application/json; charset=utf-8');
 
 // Only POST is accepted.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'error' => 'POST required']);
+    echo json_encode(ajax_error::refused(ajax_error::REFUSED_POST_REQUIRED));
     die();
 }
 
 // Require sesskey.
 if (!confirm_sesskey()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid session key']);
+    echo json_encode(ajax_error::refused(ajax_error::REFUSED_SESSKEY));
     die();
 }
 
@@ -77,7 +77,7 @@ $action = required_param('action', PARAM_ALPHANUMEXT);
 if ($action === 'save_filter_view' || $action === 'delete_filter_view') {
     $context = \context_system::instance();
     if (!has_capability('local/moodesk:viewall', $context)) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
         die();
     }
 
@@ -89,7 +89,7 @@ if ($action === 'save_filter_view' || $action === 'delete_filter_view') {
             // Validate params is a valid JSON object.
             $decoded = json_decode($params, true);
             if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-                echo json_encode(['success' => false, 'error' => 'Invalid JSON in params']);
+                echo json_encode(ajax_error::refused(ajax_error::REFUSED_INVALID_JSON));
                 die();
             }
 
@@ -144,7 +144,7 @@ if ($action === 'save_filter_view' || $action === 'delete_filter_view') {
  */
 if ($action === 'draft_list' || $action === 'draft_delete') {
     if (isguestuser()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
         die();
     }
 
@@ -153,7 +153,7 @@ if ($action === 'draft_list' || $action === 'draft_delete') {
 
     try {
         if (!get_config('local_moodesk', 'attachments_enabled')) {
-            echo json_encode(['success' => false, 'error' => 'Permission denied']);
+            echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
             die();
         }
 
@@ -161,7 +161,7 @@ if ($action === 'draft_list' || $action === 'draft_delete') {
             $detail = \local_moodesk\output\ticket_detail::create($ticketid, $USER->id);
 
             if (!$detail->has_composer()) {
-                echo json_encode(['success' => false, 'error' => 'Permission denied']);
+                echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
                 die();
             }
         } else {
@@ -187,7 +187,7 @@ if ($action === 'draft_list' || $action === 'draft_delete') {
         ]);
     } catch (\Throwable $e) {
         // Includes the ticket being out of reach, which the service raises.
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
     }
     die();
 }
@@ -229,7 +229,7 @@ if ($action === 'reply') {
         if ($action === 'reply') {
             $detail = \local_moodesk\output\ticket_detail::create($ticketid, (int) $USER->id);
             if (!$detail->has_composer()) {
-                echo json_encode(['success' => false, 'error' => 'Permission denied']);
+                echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
                 die();
             }
         }
@@ -289,7 +289,7 @@ if (!in_array($action, ['status', 'priority', 'assign', 'department', 'updatecat
         try {
             $ticketobj = $ticketservice->get_ticket($ticketid, $USER->id);
         } catch (\moodle_exception $e) {
-            echo json_encode(['success' => false, 'error' => 'Unknown action']);
+            echo json_encode(ajax_error::refused(ajax_error::REFUSED_UNKNOWN_ACTION));
             die();
         }
         $accesspolicy = new \local_moodesk\policy\ticket_access_policy();
@@ -303,7 +303,7 @@ if (!in_array($action, ['status', 'priority', 'assign', 'department', 'updatecat
         );
         $result = $handler->run_plugin_action($action);
         if ($result === null) {
-            echo json_encode(['success' => false, 'error' => 'Unknown action']);
+            echo json_encode(ajax_error::refused(ajax_error::REFUSED_UNKNOWN_ACTION));
             die();
         }
         echo json_encode([
@@ -325,7 +325,7 @@ if (!in_array($action, ['status', 'priority', 'assign', 'department', 'updatecat
 try {
     ticket_action_validator::require_manage_capability();
 } catch (\required_capability_exception $e) {
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
+    echo json_encode(ajax_error::refused(ajax_error::REFUSED_PERMISSION));
     die();
 }
 
